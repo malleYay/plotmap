@@ -1308,8 +1308,12 @@ def draw_cities(svg_handler):
     return
 
 def create_cache():
+    timer_start = datetime.now()
+
     print("writing bathymetric data to cache")
+
     coastlines = []
+
     viewport_polygon = Polygon([
         [VIEWPORT_OFFSET[0],                    VIEWPORT_OFFSET[1]],
         [VIEWPORT_OFFSET[0]+VIEWPORT_SIZE[0],   VIEWPORT_OFFSET[1]],
@@ -1349,6 +1353,9 @@ def create_cache():
     for filename in BATHYMETRY_FILES:
         write_bathymetry_to_cache(filename + "{}_{}_{}.geojson".format(*format_options))
 
+    print(TIMER_STRING.format("creating cache", (datetime.now()-timer_start).total_seconds())) 
+
+    return
 
 # --------------------------------------------------------------------------------
 # MAIN ---->
