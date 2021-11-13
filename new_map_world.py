@@ -1082,6 +1082,7 @@ def draw_bathymetry(svg_handler, cut_bathymetry_by):
 
     bathymetry = []
 
+    # TODO: remove necessity to indicate num_layer, min_height and max_height
     num_layers = 15
     min_height = -9000
     max_height = 0
@@ -1118,6 +1119,7 @@ def draw_terrain(svg_handler):
 
     terrain = []
 
+    # TODO: remove necessity to indicate num_layer, min_height and max_height
     num_layers = 30
     min_height = 0
     max_height = 9000
@@ -1337,6 +1339,7 @@ def create_cache():
         write_bathymetry_to_cache(filename + "{}_{}_{}.geojson".format(*format_options), coastlines)
 
 
+    # TODO: remove necessity to indicate num_layer, min_height and max_height
     # terrain
     num_layers = 30
     min_height = 0
@@ -1380,6 +1383,7 @@ print("tile size: {:.2f} x {:.2f} meter".format(*TILE_SIZE))
 
 #TODO: create cache automatically when no files found
 # create cache of the complete viewport
+# TODO: create cache automatically when no files found
 if CREATE_CACHE:
     create_cache()
 
