@@ -85,9 +85,9 @@ SEA_LABELS                      = [
                                 ]
 
 MAP_CENTER                      = [0, 0]
-MAP_SIZE                        = [1500, 1500] # unit for data: m / unit for SVG elements: px or mm
-VIEWPORT_OFFSET                 = [0, 250] # cutout of min and max
-TILE_NUMBERS                    = [3, 2] # number of tiles [x, y]
+MAP_SIZE                        = [1500, 1500]                  # unit for data: m / unit for SVG elements: px or mm
+VIEWPORT_OFFSET                 = [0, 250]                      # cutout of min and max
+TILE_NUMBERS                    = [3, 1]                        # number of tiles [x, y]
 VIEWPORT_SIZE                   = [MAP_SIZE[0]-2*VIEWPORT_OFFSET[0], MAP_SIZE[1]-2*VIEWPORT_OFFSET[1]]
 TILE_SIZE                       = [VIEWPORT_SIZE[0]/TILE_NUMBERS[0], VIEWPORT_SIZE[1]/TILE_NUMBERS[1]]
 MAP_FRAGMENT_OFFSET             = VIEWPORT_OFFSET
@@ -1362,6 +1362,22 @@ def create_cache():
 
 timer_total = datetime.now()
 
+# --------------------------------------------------------------------------------
+# create flattened tile matrix e.g. 3x2 --> [[tile-1-1, tile-1-2, tile-1-3, tile-2-1, tile-2-2, tile-2-3]]
+# tile-row-column = [(minx, miny), (maxx, maxy)]
+x_range = [TILE_SIZE[0]*i for i in range(TILE_NUMBERS[0]+1)]
+y_range = [TILE_SIZE[1]*i for i in range(TILE_NUMBERS[1]+1)]
+tiles =[]
+for i, item_y in enumerate(y_range[:-1]):
+    row = []
+    for j, item_x in enumerate(x_range[:-1]):
+        col = [(x_range[j], y_range[i]), (x_range[j+1], y_range[i+1])]
+        row.append(col)
+    tiles.append(row)
+tiles_flatten = [item for sublist in tiles for item in sublist]
+print(tiles_flatten)
+# --------------------------------------------------------------------------------
+
 conv = maptools.Converter(MAP_CENTER, MAP_SIZE, MAP_SIZE_SCALE)
 
 # --------------------------------------------------------------------------------
@@ -1380,7 +1396,8 @@ if DARK_MODE:
 
 svg = []
 for i, item in enumerate(tiles_flatten):
-    svg.append(SvgWriter("world-{}.svg".format(i), dimensions=TILE_SIZE, offset=[item[0][0], 250], background_color=bg_color))
+    svg.append(SvgWriter("world-{}.svg".format(i), dimensions=TILE_SIZE, offset=[item[0][0]+VIEWPORT_OFFSET[0], item[0][1]+VIEWPORT_OFFSET[1]], background_color=bg_color))
+# --------------------------------------------------------------------------------
 
 print("map size: {:.2f} x {:.2f} meter".format(MAP_SIZE[0]*MAP_SIZE_SCALE, MAP_SIZE[1]*MAP_SIZE_SCALE))
 print("svg size: {:.2f} x {:.2f} units".format(*MAP_SIZE))
