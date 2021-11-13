@@ -1,8 +1,12 @@
-database/postgres_database
-database/logfile
-database/imposm
 *.pbf
 *.osm
-test.svg
+*.svg
 *.gcode
 *.jpg
+env/
+world_data/
+!world_data/gebco_grid_to_polygons.py
+database/
+!database/install_imposm3.txt
+!database/set_up_postgres.txt
+__pycache__/

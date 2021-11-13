@@ -29,21 +29,28 @@ GeoJSON output is the same
 
 ---------------------------------------------------------------------- """
 
-BASE_DIR = "gebco_2020_geotiff"
+BASE_DIR = "gebco_2021_sub_ice_topo_geotiff"
 DATASET_FILES = [
-    "gebco_2020_n0.0_s-90.0_w-90.0_e0.0.tif",
-    "gebco_2020_n0.0_s-90.0_w-180.0_e-90.0.tif",
-    "gebco_2020_n0.0_s-90.0_w0.0_e90.0.tif",
-    "gebco_2020_n0.0_s-90.0_w90.0_e180.0.tif",
-    "gebco_2020_n90.0_s0.0_w-90.0_e0.0.tif",
-    "gebco_2020_n90.0_s0.0_w-180.0_e-90.0.tif",
-    "gebco_2020_n90.0_s0.0_w0.0_e90.0.tif",
-    "gebco_2020_n90.0_s0.0_w90.0_e180.0.tif"
+    "gebco_2021_sub_ice_topo_n0.0_s-90.0_w-90.0_e0.0.tif",
+    "gebco_2021_sub_ice_topo_n0.0_s-90.0_w-180.0_e-90.0.tif",
+    "gebco_2021_sub_ice_topo_n0.0_s-90.0_w0.0_e90.0.tif",
+    "gebco_2021_sub_ice_topo_n0.0_s-90.0_w90.0_e180.0.tif",
+    "gebco_2021_sub_ice_topo_n90.0_s0.0_w-90.0_e0.0.tif",
+    "gebco_2021_sub_ice_topo_n90.0_s0.0_w-180.0_e-90.0.tif",
+    "gebco_2021_sub_ice_topo_n90.0_s0.0_w0.0_e90.0.tif",
+    "gebco_2021_sub_ice_topo_n90.0_s0.0_w90.0_e180.0.tif"
 ]
 
-MIN_VAUE            = 0
-MAX_VALUE           = 9000
-NUM_ELEVATION_LINES = 30
+DATATYPE = "Bathymetry" # Bathymetry or Topography
+
+if DATATYPE == "":
+    MIN_VAUE            = 0
+    MAX_VALUE           = 9000
+    NUM_ELEVATION_LINES = 30
+elif DATATYPE == "Bathymetry":
+    MIN_VAUE            = -9000
+    MAX_VALUE           = 0
+    NUM_ELEVATION_LINES = 15
 
 MIN_AREA                    = 4 # in square-pixel
 MAX_SIMPLIFICATION_ERROR    = 0.1 # in px
@@ -139,7 +146,7 @@ for DATASET_FILE in DATASET_FILES:
         print("dataset CRS: {}".format(dataset.crs))
         print("dataset transform: \n{}".format(dataset.transform))
 
-        band = dataset.read(1)
+        band = np.float32(dataset.read(1))
 
         min_elevation = np.min(band) #[band > 0])
         max_elevation = np.max(band)
@@ -150,10 +157,18 @@ for DATASET_FILE in DATASET_FILES:
 
         for i in range(0, len(layer_min_max)):
 
-            threshold_value_low = layer_min_max[i][0]
-            threshold_value_high = layer_min_max[i][1]
+            threshold_value_low = float(layer_min_max[i][0])
+            threshold_value_high = float(layer_min_max[i][1])
 
             print("elevation line {}: {:7.2f} -> {:7.2f}".format(i, threshold_value_low, threshold_value_high))
+            # print(band)
+            # print(type(band))
+            # print(threshold_value_low)
+            # print(type(threshold_value_low))
+            # print(max_elevation)
+            # print(type(max_elevation))
+            # print(cv2.THRESH_BINARY)
+            # print(type(cv2.THRESH_BINARY))
 
             _, bin_band_lower = cv2.threshold(band, threshold_value_low, max_elevation, cv2.THRESH_BINARY)
             

@@ -37,7 +37,7 @@ class SvgWriter(object):
         self.layers[layer_id]["poly_lines"] = []
         self.layers[layer_id]["raw"]        = []
 
-    def add_circles(self, circles, radius=3, fill=[255, 0, 0], slayer="default"):
+    def add_circles(self, circles, radius=3, fill=[255, 0, 0], layer="default"):
         for item in circles:
             self.layers[layer]["circles"].append([item, radius, fill])
 
@@ -49,7 +49,8 @@ class SvgWriter(object):
     def add_line(self, coords, stroke_width=1, stroke=[0, 0, 0], stroke_opacity=1.0, stroke_dasharray=None, opacity=None, layer="default"):
 
         if len(coords) != 2:
-            raise Exception("add_line: malformed input data: {}".format(coords))
+            # raise Exception("add_line: malformed input data: {}".format(coords))
+            raise Exception("add_line: malformed input data")
 
         options = {}
         options["stroke-width"]     = stroke_width
@@ -90,8 +91,15 @@ class SvgWriter(object):
             polys.append(poly)
         elif type(poly) is MultiPolygon:
             polys += list(poly.geoms)
+        elif type(poly) is GeometryCollection:
+            for g in poly.geoms:
+                if type(g) is Polygon:
+                    polys.append(poly)
+                elif type(g) is MultiPolygon:
+                    polys += list(poly.geoms)
         else:
-            raise Exception("unknown geometry: {}".format(poly))
+            # raise Exception("unknown geometry: {}".format(poly))
+            raise Exception("unknown geometry - add polygon - type {}".format(type(poly)))
 
         for p in polys:
             if stroke_width > 0:
@@ -283,7 +291,8 @@ class SvgWriter(object):
         hatchlines = []
 
         if (len(self.hatching_options_meta[hatching_name])) <= 0:
-            raise Exception("missing hatching: {}".format(hatching_name))
+            # raise Exception("missing hatching: {}".format(hatching_name))
+            raise Exception("missing hatching")
         
         # hatchlines = self.hatchings[hatching_name]
         hatchlines = self._add_hatching(**self.hatching_options_meta[hatching_name], bounding_box=poly.bounds)
@@ -308,11 +317,15 @@ class SvgWriter(object):
                 if type(line) is LineString:
                     self.add_line(line.coords, **options)
                 else:
-                    print("unknown sub-geometry: {}".format(line))
+                    pass
+                    # print("unknown sub-geometry: {}".format(line))
         elif type(intersections) is MultiPoint:
             return
+        elif type(intersections) is Point:
+            return
         else:
-            raise Exception("error: unknown geometry: {}".format(type(intersections)))
+            # raise Exception("error: unknown geometry: {}".format(type(intersections)))
+            raise Exception("error: unknown geometry - add hatching")
 
 
     def save(self):

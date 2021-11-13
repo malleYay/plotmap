@@ -6,7 +6,7 @@ import argparse
 
 import numpy as np
 
-SVG_FILENAME = "world.svg"
+SVG_FILENAME = "world-0.svg"
 # SVG_FILENAME = "map_hauke.svg"
 # SVG_FILENAME = "dtm/elevation_lines.svg"
 # SVG_FILENAME = "dtm/weimar_50m.svg"
@@ -22,7 +22,7 @@ SVG_FILENAME = "world.svg"
 
 OFFSET          = [0, 0] #[-1425, -000]
 
-MAX_LENGTH_SEGMENT = 8 # in m 
+MAX_LENGTH_SEGMENT = 250 # in m 
 
 # Rotate by 90 degrees
 ROTATE_90       = False
@@ -149,12 +149,12 @@ width = root.get("width")
 if height.endswith("px") or height.endswith("mm"):
     height = height[:-2]
 
-height = int(height)
+height = int(float(height))
 
 if width.endswith("px") or height.endswith("mm"):
     width = width[:-2]
 
-width = int(width)
+width = int(float(width))
 
 if height is None or height <= 0:
     print("SVG height attribute not correct (value: {})".format(height))
@@ -200,7 +200,7 @@ if number_of_lines == 0:
 # ------------------------------------------------------------------------------------
 # filter duplicates
 
-nplines = np.array(all_lines, dtype=np.float)
+nplines = np.array(all_lines, dtype=float)
 unique = np.unique(nplines, axis=0)
 
 number_duplicates = len(all_lines) - unique.shape[0]
@@ -307,7 +307,7 @@ else:
 # ------------------------------------------------------------------------------------
 # filter tiny edges/leaves/whatever (small lines which are not connected)
 
-nplines = np.array(ordered_lines, dtype=np.float)
+nplines = np.array(ordered_lines, dtype=float)
 
 distances = np.sqrt(np.add(np.power(np.subtract(nplines[:, 0], nplines[:, 2]), 2), np.power(np.subtract(nplines[:, 1], nplines[:, 3]), 2)))
 indices_shortlines = np.where(distances < MIN_LINE_LENGTH)[0]
