@@ -3,23 +3,17 @@ import os
 import pickle
 import sys
 import csv
-
-from svgwriter import SvgWriter
-import maptools
-
 import lxml.etree as ET
-
 import shapely
 from shapely.wkb import dumps, loads
 from shapely import ops
 from shapely.prepared import prep
 from shapely.geometry import Point, GeometryCollection, MultiLineString, LineString, Polygon, MultiPolygon
 from shapely.geometry import shape, box
-
-
 import fiona
-
 from HersheyFonts import HersheyFonts
+from svgwriter import SvgWriter
+import maptools
 
 # ----------------------------------------------------------------------------------------------------
 # SETUP >
@@ -92,25 +86,7 @@ VIEWPORT_SIZE                   = [MAP_SIZE[0]-2*VIEWPORT_OFFSET[0], MAP_SIZE[1]
 TILE_SIZE                       = [VIEWPORT_SIZE[0]/TILE_NUMBERS[0], VIEWPORT_SIZE[1]/TILE_NUMBERS[1]]
 MAP_FRAGMENT_OFFSET             = VIEWPORT_OFFSET
 MAP_FRAGMENT_SIZE               = VIEWPORT_SIZE
-HOLE_DIST                       = 15
-# tiles                           = [[[(0, 0), (500, 1000)], [(500, 0), (1000, 1000)], [(1000, 0), (1500, 1000)]]]
-
-x_range = [TILE_SIZE[0]*i for i in range(TILE_NUMBERS[0]+1)]
-y_range = [TILE_SIZE[1]*i for i in range(TILE_NUMBERS[1]+1)]
-
-tiles =[]
-for i, item_y in enumerate(y_range[:-1]):
-    row = []
-    for j, item_x in enumerate(x_range[:-1]):
-        col = [(x_range[j], y_range[i]), (x_range[j+1], y_range[i+1])]
-        row.append(col)
-    tiles.append(row)
-tiles_flatten = [item for sublist in tiles for item in sublist]
-# print(tiles_flatten)
-
-MAP_SIZE_SCALE                  = maptools.EQUATOR/MAP_SIZE[0]      # increase or decrease MAP_SIZE by factor
-
-SIMPLIFICATION_MAX_ERROR        = 0.1 #1.0 # 0.2                    # unit in map coordinates (px or mm)
+HOLE_DIST                       = 15                            # distance of mounting holes to the edges
 
 THRESHOLD_CITY_POPULATION       = 1
 
@@ -1394,6 +1370,8 @@ bg_color = "gray"
 if DARK_MODE:
     bg_color = "black"
 
+# --------------------------------------------------------------------------------
+# create svg_handler for each item in tiles
 svg = []
 for i, item in enumerate(tiles_flatten):
     svg.append(SvgWriter("world-{}.svg".format(i), dimensions=TILE_SIZE, offset=[item[0][0]+VIEWPORT_OFFSET[0], item[0][1]+VIEWPORT_OFFSET[1]], background_color=bg_color))
@@ -1405,11 +1383,12 @@ print("viewport size: {:.2f} x {:.2f} millimeter".format(*VIEWPORT_SIZE))
 print("tile numbers: {} x {}".format(*TILE_NUMBERS))
 print("tile size: {:.2f} x {:.2f} millimeter".format(*TILE_SIZE))
 
-#TODO: create cache automatically when no files found
+# --------------------------------------------------------------------------------
 # create cache of the complete viewport
 # TODO: create cache automatically when no files found
 if CREATE_CACHE:
     create_cache()
+# --------------------------------------------------------------------------------
 
 # loop through each tile, create the map and save as svg
 for tile_index, tile_item in enumerate(tiles_flatten):
