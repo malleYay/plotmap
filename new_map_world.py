@@ -30,10 +30,7 @@ CACHE_DIRECTORY                 = "./world_data/gebco_2021_sub_ice_topo_geotiff/
 SEA_LABELS_FILE                 = "./world_data/labels_sea.geojson"
 COASTLINE_FILE                  = "./world_data/simplified-land-polygons-complete-3857/simplified_land_polygons.shp"
 BORDER_FILE                     = "./world_data/10m_cultural/ne_10m_admin_0_boundary_lines_land.shp"
-# CITIES_FILE                     = "./world_data/ne_50m_populated_places_simple.geojson"
 CITIES_FILE                     = "./world_data/worldcities.geojson"
-# CITIES_FILE                     = "./world_data/ne_10m_populated_places/ne_10m_populated_places.shp"
-# CITIES_FILE                    = "./world_data/ne_110m_populated_places/ne_110m_populated_places.shp"
 BATHYMETRY_DIRECTORY            = "./world_data/gebco_2021_sub_ice_topo_geotiff"
 BATHYMETRY_FILES                = [
                                     "gebco_2021_sub_ice_topo_n0.0_s-90.0_w-90.0_e0.0.",
@@ -56,6 +53,7 @@ TERRAIN_FILES                   = [
                                     "gebco_2021_sub_ice_topo_n90.0_s0.0_w0.0_e90.0.",
                                     "gebco_2021_sub_ice_topo_n90.0_s0.0_w90.0_e180.0."
                                 ]
+# TODO: move sea labels to world_data/
 SEA_LABELS                      = [
                                     [[40.5,     -150],  "Nordpazifik"],
                                     [[57,       168],   "Beringmeer"],
@@ -91,13 +89,26 @@ SEA_LABELS                      = [
 MAP_CENTER                      = [0, 0]
 MAP_SIZE                        = [1500, 1500] # unit for data: m / unit for SVG elements: px or mm
 VIEWPORT_OFFSET                 = [0, 250] # cutout of min and max
-TILE_NUMBERS                    = [3, 1] # number of tiles [x, y]
+TILE_NUMBERS                    = [3, 2] # number of tiles [x, y]
 VIEWPORT_SIZE                   = [MAP_SIZE[0]-2*VIEWPORT_OFFSET[0], MAP_SIZE[1]-2*VIEWPORT_OFFSET[1]]
 TILE_SIZE                       = [VIEWPORT_SIZE[0]/TILE_NUMBERS[0], VIEWPORT_SIZE[1]/TILE_NUMBERS[1]]
 MAP_FRAGMENT_OFFSET             = VIEWPORT_OFFSET
 MAP_FRAGMENT_SIZE               = VIEWPORT_SIZE
 HOLE_DIST                       = 15
-tiles                           = [[(0, 0), (500, 1000)], [(500, 0), (1000, 1000)], [(1000, 0), (1500, 1000)]]
+# tiles                           = [[[(0, 0), (500, 1000)], [(500, 0), (1000, 1000)], [(1000, 0), (1500, 1000)]]]
+
+x_range = [TILE_SIZE[0]*i for i in range(TILE_NUMBERS[0]+1)]
+y_range = [TILE_SIZE[1]*i for i in range(TILE_NUMBERS[1]+1)]
+
+tiles =[]
+for i, item_y in enumerate(y_range[:-1]):
+    row = []
+    for j, item_x in enumerate(x_range[:-1]):
+        col = [(x_range[j], y_range[i]), (x_range[j+1], y_range[i+1])]
+        row.append(col)
+    tiles.append(row)
+tiles_flatten = [item for sublist in tiles for item in sublist]
+# print(tiles_flatten)
 
 MAP_SIZE_SCALE                  = maptools.EQUATOR/MAP_SIZE[0]      # increase or decrease MAP_SIZE by factor
 
@@ -780,7 +791,7 @@ def draw_meta(svg_handler):
                     if not viewport_polygon.contains(p):
                         continue
 
-                    for i, _ in enumerate(tiles):
+                    for i, _ in enumerate(tiles_flatten):
                         svg_handler.add_line([[x-2, y-2], [x+2, y+2]], **options_text)
                         svg_handler.add_line([[x+2, y-2], [x-2, y+2]], **options_text)
 
@@ -950,7 +961,7 @@ def draw_coastlines(svg_handler):
 
     print(TIMER_STRING.format("postprocessing coastline data", (datetime.now()-timer_start).total_seconds()))
 
-    for i, item in enumerate(tiles):
+    for i, item in enumerate(tiles_flatten):
         tile = box(item[0][0], item[0][1], item[1][0], item[1][1])
 
         coastlines_combined = ops.unary_union(coastlines)
@@ -1094,7 +1105,6 @@ def draw_terrain(svg_handler):
             lines = validate_linestring(terrain_line)
 
             for line in lines:
-                # svg_handler.add_poly_line(list(line.coords), stroke=[color, color, color], stroke_width=0.5, layer="terrain")
                 svg_handler.add_poly_line(list(line.coords), stroke=[88, 47, 14], stroke_width=0.5, layer="terrain")
 
     return
@@ -1112,15 +1122,8 @@ def draw_borders(svg_handler):
         for line in lines:
             exclusion_zones.append(line.buffer(1).simplify(SIMPLIFICATION_MAX_ERROR))
             svg_handler.add_poly_line(list(line.coords), stroke_width=0.6, stroke=[65, 72, 51], layer="borders")
-    # for border in borders:
-    #     exclusion_zones.append(border.buffer(1).simplify(SIMPLIFICATION_MAX_ERROR))
-
-    # borders = []
 
     print(TIMER_STRING.format("loading border region data", (datetime.now()-timer_start).total_seconds())) 
-
-    # for border in borders:
-    #     svg_handler.add_poly_line(list(border.coords), stroke_width=0.6, stroke=[65, 72, 51], layer="borders")
 
     return
 
@@ -1135,8 +1138,6 @@ def draw_cities(svg_handler):
 
     geometries = []
     shapefile = fiona.open(CITIES_FILE)
-    # print(type(shapefile))
-    # print(shapefile[:20])
 
     latlons_flipped = True
 
@@ -1152,20 +1153,6 @@ def draw_cities(svg_handler):
 
         if not type(geom) is Point:
             raise Exception("parsing shapefile: unexpected type: {}".format(geom))
-
-        # filter cities
-        # if (int(item["properties"]["POP_MAX"]) >= THRESHOLD_CITY_POPULATION or 
-        #     int(item["properties"]["POP_MIN"]) >= THRESHOLD_CITY_POPULATION
-        #     # int(item["properties"]["worldcity"]) == 1 or 
-        #     # int(item["properties"]["megacity"]) == 1
-        #     ):  
-        # if (
-        #     int(item["properties"]["worldcity"]) == 1 or
-        #     int(item["properties"]["adm0cap"]) == 1
-        #     ):  
-            
-        #     cities.append(geom)
-        #     cities_names.append(item["properties"]["nameascii"])
 
         cities.append(geom)
         cities_names.append(item["properties"]["nameascii"])
@@ -1292,7 +1279,7 @@ if DARK_MODE:
     bg_color = "black"
 
 svg = []
-for i, item in enumerate(tiles):
+for i, item in enumerate(tiles_flatten):
     svg.append(SvgWriter("world-{}.svg".format(i), dimensions=TILE_SIZE, offset=[item[0][0], 250], background_color=bg_color))
 
 print("map size: {:.2f} x {:.2f} meter".format(MAP_SIZE[0]*MAP_SIZE_SCALE, MAP_SIZE[1]*MAP_SIZE_SCALE))
@@ -1301,26 +1288,16 @@ print("viewport size: {:.2f} x {:.2f} meter".format(*VIEWPORT_SIZE))
 print("tile numbers: {} x {}".format(*TILE_NUMBERS))
 print("tile size: {:.2f} x {:.2f} meter".format(*TILE_SIZE))
 
-# create cache with the complete viewport
+#TODO: create cache automatically when no files found
+# create cache of the complete viewport
 if CREATE_CACHE:
     create_cache()
 
-# viewport_polygon = Polygon([
-#     [VIEWPORT_OFFSET[0],                    VIEWPORT_OFFSET[1]],
-#     [VIEWPORT_OFFSET[0]+VIEWPORT_SIZE[0],   VIEWPORT_OFFSET[1]],
-#     [VIEWPORT_OFFSET[0]+VIEWPORT_SIZE[0],   VIEWPORT_OFFSET[1]+VIEWPORT_SIZE[1]],
-#     [VIEWPORT_OFFSET[0],                    VIEWPORT_OFFSET[1]+VIEWPORT_SIZE[1]]
-# ])
-
 # loop through each tile, create the map and save as svg
-for tile_index, tile_item in enumerate(tiles):
-
-    # skip first tile
-    # if tile_index == 0:
-    #     continue
+for tile_index, tile_item in enumerate(tiles_flatten):
 
     timer_tile = datetime.now()
-    print("starting tile {} of {}".format(tile_index + 1, len(tiles)))
+    print("starting tile {} of {}".format(tile_index + 1, len(tiles_flatten)))
 
     exclusion_zones = []
     coastlines = []
@@ -1366,7 +1343,6 @@ for tile_index, tile_item in enumerate(tiles):
             svg[tile_index].add_hatching("bathymetry_hatching_{}".format(i), stroke_width=0.5, stroke_opacity=0.5, distance=distance)
     # -------------------------------------------------------------------------------------------------------
 
-    # tiles  = [[(0, 0), (500, 1000)], [(500, 0), (1000, 1000)], [(1000, 0), (1500, 1000)]]
     viewport_polygon = Polygon([
         [VIEWPORT_OFFSET[0]+tile_item[0][0],   VIEWPORT_OFFSET[1]+tile_item[0][1]],
         [VIEWPORT_OFFSET[0]+tile_item[1][0],   VIEWPORT_OFFSET[1]+tile_item[0][1]],
@@ -1390,7 +1366,7 @@ for tile_index, tile_item in enumerate(tiles):
         draw_terrain(svg[tile_index])
 
     svg[tile_index].save() 
-    print("time for tile {} of {}   ->   {}s".format(tile_index + 1, len(tiles), (datetime.now()-timer_tile).total_seconds()))
+    print("time for tile {} of {}   ->   {}s".format(tile_index + 1, len(tiles_flatten), (datetime.now()-timer_tile).total_seconds()))
 
 print("total time   ->   {}s".format((datetime.now()-timer_total).total_seconds()))
 
