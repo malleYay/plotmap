@@ -1384,9 +1384,9 @@ for i, item in enumerate(tiles_flatten):
 
 print("map size: {:.2f} x {:.2f} meter".format(MAP_SIZE[0]*MAP_SIZE_SCALE, MAP_SIZE[1]*MAP_SIZE_SCALE))
 print("svg size: {:.2f} x {:.2f} units".format(*MAP_SIZE))
-print("viewport size: {:.2f} x {:.2f} meter".format(*VIEWPORT_SIZE))
+print("viewport size: {:.2f} x {:.2f} millimeter".format(*VIEWPORT_SIZE))
 print("tile numbers: {} x {}".format(*TILE_NUMBERS))
-print("tile size: {:.2f} x {:.2f} meter".format(*TILE_SIZE))
+print("tile size: {:.2f} x {:.2f} millimeter".format(*TILE_SIZE))
 
 #TODO: create cache automatically when no files found
 # create cache of the complete viewport
