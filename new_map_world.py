@@ -1078,6 +1078,8 @@ def draw_bathymetry(svg_handler, cut_bathymetry_by):
     timer_start = datetime.now()
 
     add_layers_to_writer(bathymetry, svg_handler, exclusion_zones)
+    for item in [item for sublist in bathymetry for item in sublist]:
+        exclusion_zones.append(item.simplify(SIMPLIFICATION_MAX_ERROR))
 
     print(TIMER_STRING.format("preparing sea data", (datetime.now()-timer_start).total_seconds()))
 
