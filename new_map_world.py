@@ -3,37 +3,26 @@ import os
 import pickle
 import sys
 import csv
-
-from svgwriter import SvgWriter
-import maptools
-
 import lxml.etree as ET
-
 import shapely
 from shapely.wkb import dumps, loads
 from shapely import ops
 from shapely.prepared import prep
 from shapely.geometry import Point, GeometryCollection, MultiLineString, LineString, Polygon, MultiPolygon
 from shapely.geometry import shape, box
-
-
 import fiona
-
 from HersheyFonts import HersheyFonts
+from svgwriter import SvgWriter
+import maptools
 
-TIMER_STRING                    = "{:<60s}: {:2.2f}s"
-
-DB_NAME                         = "import"
-DB_PREFIX                       = "osm_"
+# ----------------------------------------------------------------------------------------------------
+# SETUP >
 
 CACHE_DIRECTORY                 = "./world_data/gebco_2021_sub_ice_topo_geotiff/cache"
 SEA_LABELS_FILE                 = "./world_data/labels_sea.geojson"
 COASTLINE_FILE                  = "./world_data/simplified-land-polygons-complete-3857/simplified_land_polygons.shp"
 BORDER_FILE                     = "./world_data/10m_cultural/ne_10m_admin_0_boundary_lines_land.shp"
-# CITIES_FILE                     = "./world_data/ne_50m_populated_places_simple.geojson"
 CITIES_FILE                     = "./world_data/worldcities.geojson"
-# CITIES_FILE                     = "./world_data/ne_10m_populated_places/ne_10m_populated_places.shp"
-# CITIES_FILE                    = "./world_data/ne_110m_populated_places/ne_110m_populated_places.shp"
 BATHYMETRY_DIRECTORY            = "./world_data/gebco_2021_sub_ice_topo_geotiff"
 BATHYMETRY_FILES                = [
                                     "gebco_2021_sub_ice_topo_n0.0_s-90.0_w-90.0_e0.0.",
@@ -56,6 +45,7 @@ TERRAIN_FILES                   = [
                                     "gebco_2021_sub_ice_topo_n90.0_s0.0_w0.0_e90.0.",
                                     "gebco_2021_sub_ice_topo_n90.0_s0.0_w90.0_e180.0."
                                 ]
+# TODO: move sea labels to world_data/
 SEA_LABELS                      = [
                                     [[40.5,     -150],  "Nordpazifik"],
                                     [[57,       168],   "Beringmeer"],
@@ -89,19 +79,14 @@ SEA_LABELS                      = [
                                 ]
 
 MAP_CENTER                      = [0, 0]
-MAP_SIZE                        = [1500, 1500] # unit for data: m / unit for SVG elements: px or mm
-VIEWPORT_OFFSET                 = [0, 250] # cutout of min and max
-TILE_NUMBERS                    = [3, 1] # number of tiles [x, y]
+MAP_SIZE                        = [1500, 1500]                  # unit for data: m / unit for SVG elements: px or mm
+VIEWPORT_OFFSET                 = [0, 250]                      # cutout of min and max
+TILE_NUMBERS                    = [3, 1]                        # number of tiles [x, y]
 VIEWPORT_SIZE                   = [MAP_SIZE[0]-2*VIEWPORT_OFFSET[0], MAP_SIZE[1]-2*VIEWPORT_OFFSET[1]]
 TILE_SIZE                       = [VIEWPORT_SIZE[0]/TILE_NUMBERS[0], VIEWPORT_SIZE[1]/TILE_NUMBERS[1]]
 MAP_FRAGMENT_OFFSET             = VIEWPORT_OFFSET
 MAP_FRAGMENT_SIZE               = VIEWPORT_SIZE
-HOLE_DIST                       = 15
-tiles                           = [[(0, 0), (500, 1000)], [(500, 0), (1000, 1000)], [(1000, 0), (1500, 1000)]]
-
-MAP_SIZE_SCALE                  = maptools.EQUATOR/MAP_SIZE[0]      # increase or decrease MAP_SIZE by factor
-
-SIMPLIFICATION_MAX_ERROR        = 0.1 #1.0 # 0.2                    # unit in map coordinates (px or mm)
+HOLE_DIST                       = 15                            # distance of mounting holes to the edges
 
 THRESHOLD_CITY_POPULATION       = 1
 
@@ -115,7 +100,7 @@ CREATE_CACHE                    = False
 DRAW_META                       = True
 DRAW_SCREWHOLES                 = True
 DRAW_LAT_LON_LINES              = True
-DRAW_LARGE_LABELS               = True
+DRAW_SEA_LABELS                 = True
 DRAW_COASTLINES                 = True
 DRAW_PLACES                     = False
 DRAW_CITIES                     = True
@@ -127,7 +112,33 @@ DRAW_TERRAIN                    = True
 
 CITY_CIRCLE_RADIUS              = 2.0
 
+COLOR_COASTLINES                = [0, 0, 0]
+COLOR_TERRAIN                   = [88, 47, 14]
+COLOR_BATHYMETRY                = [11, 72, 107]
+COLOR_BORDERS                   = [65, 72, 51]
+COLOR_SCREWHOLES                = [0, 0, 0]
+COLOR_LAT_LON_LINES             = [0, 0, 0]
+COLOR_CITIES                    = [0, 0, 0]
+COLOR_CITIES_CIRCLES            = [255, 0, 0]
+COLOR_URBAN_AREAS               = [0, 0, 0]
+COLOR_ADMIN_REGIONS             = [0, 0, 0]
+COLOR_SEA_LABELS                = [0, 0, 0]
+
+
 DARK_MODE                       = False
+
+# < SETUP
+# ----------------------------------------------------------------------------------------------------
+
+
+TIMER_STRING                    = "{:<60s}: {:2.2f}s"
+
+DB_NAME                         = "import"
+DB_PREFIX                       = "osm_"
+
+SIMPLIFICATION_MAX_ERROR        = 0.1 #1.0 # 0.2                    # unit in map coordinates (px or mm)
+
+MAP_SIZE_SCALE                  = maptools.EQUATOR/MAP_SIZE[0]      # increase or decrease MAP_SIZE by factor
 
 """ ------------------------------
 
@@ -730,29 +741,50 @@ def load_coastline():
 
 def draw_meta(svg_handler):
 
-    options = {
+    # options = {
+    #     "stroke_width": 2.0,
+    #     "layer": "meta",
+    #     "stroke": [0, 0, 0],
+    #     "opacity": 0
+    # }
+
+    options_screwholes = {
         "stroke_width": 2.0,
         "layer": "meta",
-        "stroke": [0, 0, 0],
+        "stroke": COLOR_SCREWHOLES,
         "opacity": 0
     }
 
-    options_text = {
+    options_lat_lon_lines = {
+        "stroke_width": 2.0,
+        "layer": "meta",
+        "stroke": COLOR_SCREWHOLES,
+        "opacity": 0
+    }
+
+    options_lat_lon_lines_text = {
         "stroke_width": 0.5,
         "layer": "meta_text",
-        "stroke": [0, 0, 0],
-    }
-
-    if DARK_MODE:
-        options["stroke"] = [255, 255, 255]
-        options_text["stroke"] = [255, 255, 255]
-
-    options_tile = {
-        "stroke_width": 4.0,
-        "layer": "meta",
-        "stroke": [0, 0, 0],
+        "stroke": COLOR_SCREWHOLES,
         "opacity": 0
     }
+
+    # options_text = {
+    #     "stroke_width": 0.5,
+    #     "layer": "meta_text",
+    #     "stroke": [0, 0, 0],
+    # }
+
+    # if DARK_MODE:
+    #     options["stroke"] = [255, 255, 255]
+    #     options_text["stroke"] = [255, 255, 255]
+
+    # options_tile = {
+    #     "stroke_width": 4.0,
+    #     "layer": "meta",
+    #     "stroke": [0, 0, 0],
+    #     "opacity": 0
+    # }
 
     # -------------------------------------------------------------------------------------------------
     # draw screw holes
@@ -780,12 +812,12 @@ def draw_meta(svg_handler):
                     if not viewport_polygon.contains(p):
                         continue
 
-                    for i, _ in enumerate(tiles):
-                        svg_handler.add_line([[x-2, y-2], [x+2, y+2]], **options_text)
-                        svg_handler.add_line([[x+2, y-2], [x-2, y+2]], **options_text)
+                    for i, _ in enumerate(tiles_flatten):
+                        svg_handler.add_line([[x-2, y-2], [x+2, y+2]], **options_screwholes)
+                        svg_handler.add_line([[x+2, y-2], [x-2, y+2]], **options_screwholes)
 
                         # svg.add_polygon(p.buffer(2), **options)
-                        svg_handler.add_polygon(p.buffer(3+1), **options)
+                        svg_handler.add_polygon(p.buffer(3+1), **options_screwholes)
                     exclusion_zones.append(p.buffer(7))
 
     # -------------------------------------------------------------------------------------------------
@@ -795,9 +827,9 @@ def draw_meta(svg_handler):
     if DRAW_LAT_LON_LINES:
         latlonlines = []
 
-        color = [0, 0, 0]
-        if DARK_MODE:
-            color = [255, 255, 255]
+        # color = [0, 0, 0]
+        # if DARK_MODE:
+        #     color = [255, 255, 255]
 
         NUM_LINES_LAT = 24*1
 
@@ -815,7 +847,7 @@ def draw_meta(svg_handler):
                 if not viewport_polygon.contains(Point(l[0])) or not viewport_polygon.contains(Point(l[1])):
                     continue
 
-                svg_handler.add_line(l, stroke=color, layer="meta_text")
+                svg_handler.add_line(l, **options_lat_lon_lines_text)
             
             exclusion_zones.append(text_lines1.buffer(3).simplify(SIMPLIFICATION_MAX_ERROR))
 
@@ -826,7 +858,7 @@ def draw_meta(svg_handler):
                 if not viewport_polygon.contains(Point(l[0])) or not viewport_polygon.contains(Point(l[1])):
                     continue
 
-                svg_handler.add_line(l, stroke=color, layer="meta_text")
+                svg_handler.add_line(l, **options_lat_lon_lines_text)
             
             exclusion_zones.append(text_lines2.buffer(3).simplify(SIMPLIFICATION_MAX_ERROR))
 
@@ -861,7 +893,7 @@ def draw_meta(svg_handler):
                     if not viewport_polygon.contains(Point(l[0])) or not viewport_polygon.contains(Point(l[1])):
                         continue
 
-                    svg_handler.add_line(l, stroke=color, layer="meta_text")
+                    svg_handler.add_line(l, **options_lat_lon_lines_text)
 
                 exclusion_zones.append(text_lines1.buffer(3).simplify(SIMPLIFICATION_MAX_ERROR))
 
@@ -872,7 +904,7 @@ def draw_meta(svg_handler):
                     if not viewport_polygon.contains(Point(l[0])) or not viewport_polygon.contains(Point(l[1])):
                         continue
 
-                    svg_handler.add_line(l, stroke=color, layer="meta_text")
+                    svg_handler.add_line(l, **options_lat_lon_lines_text)
 
                 exclusion_zones.append(text_lines2.buffer(3).simplify(SIMPLIFICATION_MAX_ERROR))
 
@@ -890,11 +922,18 @@ def draw_meta(svg_handler):
             if save_line.is_empty:
                 continue
 
-            svg_handler.add_line(save_line.coords, **options)
+            svg_handler.add_line(save_line.coords, **options_lat_lon_lines)
 
     return
 
-def draw_large_labels(svg_handler):
+def draw_sea_labels(svg_handler):
+
+    options_sea_labels = {
+        "stroke_width": 1.5,
+        "layer": "sea_labels",
+        "stroke": COLOR_SEA_LABELS,
+        "opacity": 0
+    }
 
     for l in SEA_LABELS:
 
@@ -918,13 +957,25 @@ def draw_large_labels(svg_handler):
             if DARK_MODE:
                 color = [255, 255, 255]
 
-            svg_handler.add_line(l, stroke=color, stroke_width=1.5, layer="large_labels")
+            svg_handler.add_line(l, **options_sea_labels)
         
         exclusion_zones.append(text_lines.buffer(4+1).buffer(-1).simplify(SIMPLIFICATION_MAX_ERROR))
 
     return
 
 def draw_coastlines(svg_handler):
+
+    options_coastlines = {
+        "stroke_width": 1.5,
+        "layer": "coastlines",
+        "stroke": COLOR_COASTLINES,
+    }
+
+    options_coastlines_hatching = {
+        "stroke_width": 0,
+        "layer": "coastlines_hatching",
+        "hatching": "coastline_hatching"
+    }
 
     coastlines = load_coastline()
 
@@ -950,7 +1001,7 @@ def draw_coastlines(svg_handler):
 
     print(TIMER_STRING.format("postprocessing coastline data", (datetime.now()-timer_start).total_seconds()))
 
-    for i, item in enumerate(tiles):
+    for i, item in enumerate(tiles_flatten):
         tile = box(item[0][0], item[0][1], item[1][0], item[1][1])
 
         coastlines_combined = ops.unary_union(coastlines)
@@ -965,7 +1016,7 @@ def draw_coastlines(svg_handler):
             if type(poly) not in [Polygon, MultiPolygon]:
                 print("warning: unknown geometry: {}".format(poly[0]))
                 continue
-            svg_handler.add_polygon(poly, stroke_width=0, hatching="coastline_hatching", layer="coastlines_hatching")
+            svg_handler.add_polygon(poly, **options_coastlines_hatching)
 
         coastlines_line = polygons_to_linestrings(coastlines)
         coastlines_line = cut_linestrings(coastlines_line, exclusion_zones)
@@ -990,7 +1041,7 @@ def draw_coastlines(svg_handler):
                 if DARK_MODE:
                     color = [255, 255, 255]
 
-                svg_handler.add_poly_line(list(line.coords), stroke_width=1.5, stroke=color, layer="coastlines")
+                svg_handler.add_poly_line(list(line.coords), **options_coastlines)
 
     return coastlines
 
@@ -999,7 +1050,7 @@ def draw_bathymetry(svg_handler, cut_bathymetry_by):
     options = {
         "stroke_width": 0.2,
         "opacity": 0.0,
-        "stroke": [11, 72, 107],
+        "stroke": COLOR_BATHYMETRY,
         "layer": "bathymetry"
     }
 
@@ -1007,6 +1058,7 @@ def draw_bathymetry(svg_handler, cut_bathymetry_by):
 
     bathymetry = []
 
+    # TODO: remove necessity to indicate num_layer, min_height and max_height
     num_layers = 15
     min_height = -9000
     max_height = 0
@@ -1033,10 +1085,17 @@ def draw_bathymetry(svg_handler, cut_bathymetry_by):
 
 def draw_terrain(svg_handler):
 
+    options = {
+        "stroke_width": 0.5,
+        "stroke": COLOR_TERRAIN,
+        "layer": "terrain"
+    }
+
     timer_start = datetime.now()
 
     terrain = []
 
+    # TODO: remove necessity to indicate num_layer, min_height and max_height
     num_layers = 30
     min_height = 0
     max_height = 9000
@@ -1094,12 +1153,17 @@ def draw_terrain(svg_handler):
             lines = validate_linestring(terrain_line)
 
             for line in lines:
-                # svg_handler.add_poly_line(list(line.coords), stroke=[color, color, color], stroke_width=0.5, layer="terrain")
-                svg_handler.add_poly_line(list(line.coords), stroke=[88, 47, 14], stroke_width=0.5, layer="terrain")
+                svg_handler.add_poly_line(list(line.coords), **options)
 
     return
 
 def draw_borders(svg_handler):
+
+    options = {
+        "stroke_width": 0.6,
+        "stroke": COLOR_BORDERS,
+        "layer": "borders"
+    }
 
     timer_start = datetime.now()
     
@@ -1111,20 +1175,27 @@ def draw_borders(svg_handler):
         lines = validate_linestring(border_line)
         for line in lines:
             exclusion_zones.append(line.buffer(1).simplify(SIMPLIFICATION_MAX_ERROR))
-            svg_handler.add_poly_line(list(line.coords), stroke_width=0.6, stroke=[65, 72, 51], layer="borders")
-    # for border in borders:
-    #     exclusion_zones.append(border.buffer(1).simplify(SIMPLIFICATION_MAX_ERROR))
-
-    # borders = []
+            svg_handler.add_poly_line(list(line.coords), **options)
 
     print(TIMER_STRING.format("loading border region data", (datetime.now()-timer_start).total_seconds())) 
-
-    # for border in borders:
-    #     svg_handler.add_poly_line(list(border.coords), stroke_width=0.6, stroke=[65, 72, 51], layer="borders")
 
     return
 
 def draw_cities(svg_handler):
+
+    options = {
+        "stroke_width": 0.5,
+        "opacity": 0.0,
+        "stroke": COLOR_CITIES_CIRCLES,
+        "layer": "cities_circles"
+    }
+
+    options_text = {
+        "stroke_width": 0.5,
+        "opacity": 0.0,
+        "stroke": COLOR_CITIES,
+        "layer": "cities"
+    }
 
     cities                   = []
     cities_names             = []
@@ -1135,8 +1206,6 @@ def draw_cities(svg_handler):
 
     geometries = []
     shapefile = fiona.open(CITIES_FILE)
-    # print(type(shapefile))
-    # print(shapefile[:20])
 
     latlons_flipped = True
 
@@ -1153,20 +1222,6 @@ def draw_cities(svg_handler):
         if not type(geom) is Point:
             raise Exception("parsing shapefile: unexpected type: {}".format(geom))
 
-        # filter cities
-        # if (int(item["properties"]["POP_MAX"]) >= THRESHOLD_CITY_POPULATION or 
-        #     int(item["properties"]["POP_MIN"]) >= THRESHOLD_CITY_POPULATION
-        #     # int(item["properties"]["worldcity"]) == 1 or 
-        #     # int(item["properties"]["megacity"]) == 1
-        #     ):  
-        # if (
-        #     int(item["properties"]["worldcity"]) == 1 or
-        #     int(item["properties"]["adm0cap"]) == 1
-        #     ):  
-            
-        #     cities.append(geom)
-        #     cities_names.append(item["properties"]["nameascii"])
-
         cities.append(geom)
         cities_names.append(item["properties"]["nameascii"])
         cities_label_orientation.append(item["properties"]["labelorientation"])
@@ -1176,7 +1231,7 @@ def draw_cities(svg_handler):
         city_pos = cities[i]
         city_name = cities_names[i]
         city_label_orientation = cities_label_orientation[i]
-        svg_handler.add_polygon(city_pos.buffer(CITY_CIRCLE_RADIUS), stroke_width=0.5, opacity=0, stroke=[255, 0, 0], layer="places_circles")
+        svg_handler.add_polygon(city_pos.buffer(CITY_CIRCLE_RADIUS), **options)
 
         c = list(city_pos.coords)[0]
 
@@ -1221,7 +1276,7 @@ def draw_cities(svg_handler):
 
         for line in text_lines.geoms:
             l = list(line.coords)
-            svg_handler.add_line(l)
+            svg_handler.add_line(l, **options_text)
 
         exclusion_zones.append(text_lines.buffer(2+1).buffer(-1).simplify(SIMPLIFICATION_MAX_ERROR))
         exclusion_zones.append(city_pos.buffer(CITY_CIRCLE_RADIUS+1).simplify(SIMPLIFICATION_MAX_ERROR))
@@ -1229,8 +1284,12 @@ def draw_cities(svg_handler):
     return
 
 def create_cache():
+    timer_start = datetime.now()
+
     print("writing bathymetric data to cache")
+
     coastlines = []
+
     viewport_polygon = Polygon([
         [VIEWPORT_OFFSET[0],                    VIEWPORT_OFFSET[1]],
         [VIEWPORT_OFFSET[0]+VIEWPORT_SIZE[0],   VIEWPORT_OFFSET[1]],
@@ -1260,6 +1319,7 @@ def create_cache():
         write_bathymetry_to_cache(filename + "{}_{}_{}.geojson".format(*format_options), coastlines)
 
 
+    # TODO: remove necessity to indicate num_layer, min_height and max_height
     # terrain
     num_layers = 30
     min_height = 0
@@ -1269,11 +1329,30 @@ def create_cache():
     for filename in BATHYMETRY_FILES:
         write_bathymetry_to_cache(filename + "{}_{}_{}.geojson".format(*format_options))
 
+    print(TIMER_STRING.format("creating cache", (datetime.now()-timer_start).total_seconds())) 
+
+    return
 
 # --------------------------------------------------------------------------------
 # MAIN ---->
 
 timer_total = datetime.now()
+
+# --------------------------------------------------------------------------------
+# create flattened tile matrix e.g. 3x2 --> [[tile-1-1, tile-1-2, tile-1-3, tile-2-1, tile-2-2, tile-2-3]]
+# tile-row-column = [(minx, miny), (maxx, maxy)]
+x_range = [TILE_SIZE[0]*i for i in range(TILE_NUMBERS[0]+1)]
+y_range = [TILE_SIZE[1]*i for i in range(TILE_NUMBERS[1]+1)]
+tiles =[]
+for i, item_y in enumerate(y_range[:-1]):
+    row = []
+    for j, item_x in enumerate(x_range[:-1]):
+        col = [(x_range[j], y_range[i]), (x_range[j+1], y_range[i+1])]
+        row.append(col)
+    tiles.append(row)
+tiles_flatten = [item for sublist in tiles for item in sublist]
+print(tiles_flatten)
+# --------------------------------------------------------------------------------
 
 conv = maptools.Converter(MAP_CENTER, MAP_SIZE, MAP_SIZE_SCALE)
 
@@ -1291,36 +1370,31 @@ bg_color = "gray"
 if DARK_MODE:
     bg_color = "black"
 
+# --------------------------------------------------------------------------------
+# create svg_handler for each item in tiles
 svg = []
-for i, item in enumerate(tiles):
-    svg.append(SvgWriter("world-{}.svg".format(i), dimensions=TILE_SIZE, offset=[item[0][0], 250], background_color=bg_color))
+for i, item in enumerate(tiles_flatten):
+    svg.append(SvgWriter("world-{}.svg".format(i), dimensions=TILE_SIZE, offset=[item[0][0]+VIEWPORT_OFFSET[0], item[0][1]+VIEWPORT_OFFSET[1]], background_color=bg_color))
+# --------------------------------------------------------------------------------
 
 print("map size: {:.2f} x {:.2f} meter".format(MAP_SIZE[0]*MAP_SIZE_SCALE, MAP_SIZE[1]*MAP_SIZE_SCALE))
 print("svg size: {:.2f} x {:.2f} units".format(*MAP_SIZE))
-print("viewport size: {:.2f} x {:.2f} meter".format(*VIEWPORT_SIZE))
+print("viewport size: {:.2f} x {:.2f} millimeter".format(*VIEWPORT_SIZE))
 print("tile numbers: {} x {}".format(*TILE_NUMBERS))
-print("tile size: {:.2f} x {:.2f} meter".format(*TILE_SIZE))
+print("tile size: {:.2f} x {:.2f} millimeter".format(*TILE_SIZE))
 
-# create cache with the complete viewport
+# --------------------------------------------------------------------------------
+# create cache of the complete viewport
+# TODO: create cache automatically when no files found
 if CREATE_CACHE:
     create_cache()
-
-# viewport_polygon = Polygon([
-#     [VIEWPORT_OFFSET[0],                    VIEWPORT_OFFSET[1]],
-#     [VIEWPORT_OFFSET[0]+VIEWPORT_SIZE[0],   VIEWPORT_OFFSET[1]],
-#     [VIEWPORT_OFFSET[0]+VIEWPORT_SIZE[0],   VIEWPORT_OFFSET[1]+VIEWPORT_SIZE[1]],
-#     [VIEWPORT_OFFSET[0],                    VIEWPORT_OFFSET[1]+VIEWPORT_SIZE[1]]
-# ])
+# --------------------------------------------------------------------------------
 
 # loop through each tile, create the map and save as svg
-for tile_index, tile_item in enumerate(tiles):
-
-    # skip first tile
-    # if tile_index == 0:
-    #     continue
+for tile_index, tile_item in enumerate(tiles_flatten):
 
     timer_tile = datetime.now()
-    print("starting tile {} of {}".format(tile_index + 1, len(tiles)))
+    print("starting tile {} of {}".format(tile_index + 1, len(tiles_flatten)))
 
     exclusion_zones = []
     coastlines = []
@@ -1339,7 +1413,9 @@ for tile_index, tile_item in enumerate(tiles):
     svg[tile_index].add_layer("coastlines_hatching")
     svg[tile_index].add_layer("places")
     svg[tile_index].add_layer("places_circles")
-    svg[tile_index].add_layer("large_labels")
+    svg[tile_index].add_layer("cities")
+    svg[tile_index].add_layer("cities_circles")
+    svg[tile_index].add_layer("sea_labels")
     svg[tile_index].add_layer("meta")
     svg[tile_index].add_layer("meta_text")
     svg[tile_index].add_hatching("coastline_hatching", stroke_width=0.5, distance=2.0)
@@ -1366,7 +1442,6 @@ for tile_index, tile_item in enumerate(tiles):
             svg[tile_index].add_hatching("bathymetry_hatching_{}".format(i), stroke_width=0.5, stroke_opacity=0.5, distance=distance)
     # -------------------------------------------------------------------------------------------------------
 
-    # tiles  = [[(0, 0), (500, 1000)], [(500, 0), (1000, 1000)], [(1000, 0), (1500, 1000)]]
     viewport_polygon = Polygon([
         [VIEWPORT_OFFSET[0]+tile_item[0][0],   VIEWPORT_OFFSET[1]+tile_item[0][1]],
         [VIEWPORT_OFFSET[0]+tile_item[1][0],   VIEWPORT_OFFSET[1]+tile_item[0][1]],
@@ -1376,8 +1451,8 @@ for tile_index, tile_item in enumerate(tiles):
 
     if DRAW_META:
         draw_meta(svg[tile_index])
-    if DRAW_LARGE_LABELS:
-        draw_large_labels(svg[tile_index])
+    if DRAW_SEA_LABELS:
+        draw_sea_labels(svg[tile_index])
     if DRAW_CITIES:
         draw_cities(svg[tile_index])
     if DRAW_COASTLINES:
@@ -1390,7 +1465,7 @@ for tile_index, tile_item in enumerate(tiles):
         draw_terrain(svg[tile_index])
 
     svg[tile_index].save() 
-    print("time for tile {} of {}   ->   {}s".format(tile_index + 1, len(tiles), (datetime.now()-timer_tile).total_seconds()))
+    print("time for tile {} of {}   ->   {}s".format(tile_index + 1, len(tiles_flatten), (datetime.now()-timer_tile).total_seconds()))
 
 print("total time   ->   {}s".format((datetime.now()-timer_total).total_seconds()))
 

@@ -10,3 +10,5 @@ database/
 !database/install_imposm3.txt
 !database/set_up_postgres.txt
 __pycache__/
+plotmap.code-workspace
+.vscode

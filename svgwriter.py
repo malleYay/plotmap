@@ -114,11 +114,15 @@ class SvgWriter(object):
                 kwargs["layer"]         = layer
                 self._add_hatching_for_polygon(p, hatching, kwargs)
 
-    def add_poly_line(self, coords, stroke_width=1, stroke=[0, 0, 0], stroke_opacity=1.0, layer="default"):
+    def add_poly_line(self, coords, stroke_width=1, stroke=[0, 0, 0], stroke_opacity=1.0, opacity=None, layer="default"):
         options = {}
         options["stroke-width"]     = stroke_width
         options["stroke"]           = stroke
         options["stroke-opacity"]   = stroke_opacity
+
+        # parameter opacity is ignored and only exists to ensure compatibility with the polygon functions
+        # (so the same options hashmap can be used on all of these functions)
+
         self.layers[layer]["poly_lines"].append((coords, options))
 
     def add_raw_element(self, text, layer="default"):
