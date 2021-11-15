@@ -3,6 +3,8 @@
 *.svg
 *.gcode
 *.jpg
+*.nc
+*.gcode
 env/
 world_data/
 !world_data/gebco_grid_to_polygons.py
@@ -12,3 +14,4 @@ database/
 __pycache__/
 plotmap.code-workspace
 .vscode
+.DS_Store
