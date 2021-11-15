@@ -88,6 +88,11 @@ MAP_FRAGMENT_OFFSET             = VIEWPORT_OFFSET
 MAP_FRAGMENT_SIZE               = VIEWPORT_SIZE
 HOLE_DIST                       = 15                            # distance of mounting holes to the edges
 
+# instead of creating svg(s) of the whole map, create a small svg-preview
+PREVIEW                          = True
+PREVIEW_SIZE                     = [100, 100]                        # preview size in mm
+PREVIEW_POSITION                 = [750, 250]                        # position on map (considering MAP_SIZE and VIEWPORT_OFFSET) in mm
+
 THRESHOLD_CITY_POPULATION       = 1
 
 CONNECT_DATABASE                = False
@@ -124,7 +129,7 @@ COLOR_URBAN_AREAS               = [0, 0, 0]
 COLOR_ADMIN_REGIONS             = [0, 0, 0]
 COLOR_SEA_LABELS                = [0, 0, 0]
 
-
+BG_COLOR                        = "gray"
 DARK_MODE                       = False
 
 # < SETUP
@@ -1340,6 +1345,8 @@ def create_cache():
 
 timer_total = datetime.now()
 
+conv = maptools.Converter(MAP_CENTER, MAP_SIZE, MAP_SIZE_SCALE)
+
 # --------------------------------------------------------------------------------
 # create flattened tile matrix e.g. 3x2 --> [[tile-1-1, tile-1-2, tile-1-3, tile-2-1, tile-2-2, tile-2-3]]
 # tile-row-column = [(minx, miny), (maxx, maxy)]
@@ -1354,9 +1361,6 @@ for i, item_y in enumerate(y_range[:-1]):
     tiles.append(row)
 tiles_flatten = [item for sublist in tiles for item in sublist]
 print(tiles_flatten)
-# --------------------------------------------------------------------------------
-
-conv = maptools.Converter(MAP_CENTER, MAP_SIZE, MAP_SIZE_SCALE)
 
 # --------------------------------------------------------------------------------
 # fonts
@@ -1364,21 +1368,98 @@ hfont = HersheyFonts()
 hfont.load_default_font("futural")
 hfont.normalize_rendering(FONT_SIZE)
 hfont_large = HersheyFonts()
-hfont_large.load_default_font("futuram")
+hfont_large.load_default_font("futural")
 hfont_large.normalize_rendering(FONT_SIZE_LARGE)
-# --------------------------------------------------------------------------------
 
-bg_color = "gray"
-if DARK_MODE:
-    bg_color = "black"
+# --------------------------------------------------------------------------------
+# create cache of the complete viewport
+# TODO: create cache automatically when no files found
+if CREATE_CACHE:
+    create_cache()
+
+# --------------------------------------------------------------------------------
+# instead of creating svg(s) of the whole map, create a small svg-preview
+if PREVIEW:
+
+    print("map size: {:.2f} x {:.2f} meter".format(MAP_SIZE[0]*MAP_SIZE_SCALE, MAP_SIZE[1]*MAP_SIZE_SCALE))
+    print("svg size: {:.2f} x {:.2f} units".format(*MAP_SIZE))
+    print("viewport size: {} x {} millimeter".format(*VIEWPORT_SIZE))
+    print("creating a preview")
+    print("preview size: {} x {} millimeter".format(*PREVIEW_SIZE))
+    print("preview position: {} x {} millimeter".format(*PREVIEW_POSITION))
+
+    svg_preview = SvgWriter("world-preview.svg", dimensions=PREVIEW_SIZE, offset=[PREVIEW_POSITION[0]+VIEWPORT_OFFSET[0], PREVIEW_POSITION[1]+VIEWPORT_OFFSET[1]], background_color=BG_COLOR)
+
+    exclusion_zones = []
+    coastlines = []
+    places = []
+    urban = []
+    borders = []
+    admin = []
+    bathymetry = []
+    terrain = []
+
+    svg_preview.add_layer("urban")
+    svg_preview.add_layer("borders")
+    svg_preview.add_layer("bathymetry")
+    svg_preview.add_layer("terrain")
+    svg_preview.add_layer("coastlines")
+    svg_preview.add_layer("coastlines_hatching")
+    svg_preview.add_layer("places")
+    svg_preview.add_layer("places_circles")
+    svg_preview.add_layer("cities")
+    svg_preview.add_layer("cities_circles")
+    svg_preview.add_layer("sea_labels")
+    svg_preview.add_layer("meta")
+    svg_preview.add_layer("meta_text")
+    svg_preview.add_hatching("coastline_hatching", stroke_width=0.5, distance=2.0)
+
+    # -------------------------------------------------------------------------------------------------------
+    # create bathymetry hatching
+    for i in range(0, BATHYMETRY_NUM_LAYERS):
+
+        if i < 5:
+            distance = 1
+        else:
+            distance = 1.15**(i-4)
+
+        svg_preview.add_hatching("bathymetry_hatching_{}".format(i), stroke_width=0.5, stroke_opacity=0.5, distance=distance)
+    
+    # -------------------------------------------------------------------------------------------------------
+    viewport_polygon = Polygon([
+        [VIEWPORT_OFFSET[0]+PREVIEW_POSITION[0],                VIEWPORT_OFFSET[1]+PREVIEW_POSITION[1]],
+        [VIEWPORT_OFFSET[0]+PREVIEW_POSITION[0]+PREVIEW_SIZE[0], VIEWPORT_OFFSET[1]+PREVIEW_POSITION[1]],
+        [VIEWPORT_OFFSET[0]+PREVIEW_POSITION[0]+PREVIEW_SIZE[0], VIEWPORT_OFFSET[1]+PREVIEW_POSITION[1]+PREVIEW_SIZE[1]],
+        [VIEWPORT_OFFSET[0]+PREVIEW_POSITION[0],                VIEWPORT_OFFSET[1]+PREVIEW_POSITION[1]+PREVIEW_SIZE[1]]
+    ])
+
+    # -------------------------------------------------------------------------------------------------------
+    if DRAW_META:
+        draw_meta(svg_preview)
+    if DRAW_SEA_LABELS:
+        draw_sea_labels(svg_preview)
+    if DRAW_CITIES:
+        draw_cities(svg_preview)
+    if DRAW_COASTLINES:
+        coastlines = draw_coastlines(svg_preview)
+    if DRAW_BORDERS:
+        draw_borders(svg_preview)
+    if DRAW_BATHYMETRY:
+        draw_bathymetry(svg_preview, coastlines)
+    if DRAW_TERRAIN:
+        draw_terrain(svg_preview)
+
+    svg_preview.save() 
+    print("total time   ->   {}s".format((datetime.now()-timer_total).total_seconds()))
+    sys.exit()
 
 # --------------------------------------------------------------------------------
 # create svg_handler for each item in tiles
 svg = []
 for i, item in enumerate(tiles_flatten):
-    svg.append(SvgWriter("world-{}.svg".format(i), dimensions=TILE_SIZE, offset=[item[0][0]+VIEWPORT_OFFSET[0], item[0][1]+VIEWPORT_OFFSET[1]], background_color=bg_color))
-# --------------------------------------------------------------------------------
+    svg.append(SvgWriter("world-{}.svg".format(i), dimensions=TILE_SIZE, offset=[item[0][0]+VIEWPORT_OFFSET[0], item[0][1]+VIEWPORT_OFFSET[1]], background_color=BG_COLOR))
 
+# --------------------------------------------------------------------------------
 print("map size: {:.2f} x {:.2f} meter".format(MAP_SIZE[0]*MAP_SIZE_SCALE, MAP_SIZE[1]*MAP_SIZE_SCALE))
 print("svg size: {:.2f} x {:.2f} units".format(*MAP_SIZE))
 print("viewport size: {:.2f} x {:.2f} millimeter".format(*VIEWPORT_SIZE))
@@ -1386,12 +1467,6 @@ print("tile numbers: {} x {}".format(*TILE_NUMBERS))
 print("tile size: {:.2f} x {:.2f} millimeter".format(*TILE_SIZE))
 
 # --------------------------------------------------------------------------------
-# create cache of the complete viewport
-# TODO: create cache automatically when no files found
-if CREATE_CACHE:
-    create_cache()
-# --------------------------------------------------------------------------------
-
 # loop through each tile, create the map and save as svg
 for tile_index, tile_item in enumerate(tiles_flatten):
 
