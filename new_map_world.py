@@ -132,6 +132,17 @@ COLOR_SEA_LABELS                = [0, 0, 0]
 BG_COLOR                        = "gray"
 DARK_MODE                       = False
 
+# bathymetry
+# TODO: remove necessity to indicate num_layer, min_height and max_height
+BATHYMETRY_NUM_LAYERS = 9 # 15
+BATHYMETRY_MIN_HEIGHT = -9000
+BATHYMETRY_MAX_HEIGHT = 0
+# TODO: remove necessity to indicate num_layer, min_height and max_height
+# terrain
+TERRAIN_NUM_LAYERS = 18 # 30
+TERRAIN_MIN_HEIGHT = 0
+TERRAIN_MAX_HEIGHT = 9000
+
 # < SETUP
 # ----------------------------------------------------------------------------------------------------
 
@@ -141,7 +152,7 @@ TIMER_STRING                    = "{:<60s}: {:2.2f}s"
 DB_NAME                         = "import"
 DB_PREFIX                       = "osm_"
 
-SIMPLIFICATION_MAX_ERROR        = 0.1 #1.0 # 0.2                    # unit in map coordinates (px or mm)
+SIMPLIFICATION_MAX_ERROR        = 0.2 #1.0 # 0.2                    # unit in map coordinates (px or mm)
 
 MAP_SIZE_SCALE                  = maptools.EQUATOR/MAP_SIZE[0]      # increase or decrease MAP_SIZE by factor
 
@@ -1063,13 +1074,9 @@ def draw_bathymetry(svg_handler, cut_bathymetry_by):
 
     bathymetry = []
 
-    # TODO: remove necessity to indicate num_layer, min_height and max_height
-    num_layers = 15
-    min_height = -9000
-    max_height = 0
-    format_options = [min_height, max_height, num_layers]
+    format_options = [BATHYMETRY_MIN_HEIGHT, BATHYMETRY_MAX_HEIGHT, BATHYMETRY_NUM_LAYERS]
 
-    for i in range(0, num_layers):
+    for i in range(0, BATHYMETRY_NUM_LAYERS):
         bathymetry.append([])
 
     for filename in BATHYMETRY_FILES:
@@ -1102,14 +1109,9 @@ def draw_terrain(svg_handler):
 
     terrain = []
 
-    # TODO: remove necessity to indicate num_layer, min_height and max_height
-    num_layers = 30
-    min_height = 0
-    max_height = 9000
+    format_options = [TERRAIN_MIN_HEIGHT, TERRAIN_MAX_HEIGHT, TERRAIN_NUM_LAYERS]
 
-    format_options = [min_height, max_height, num_layers]
-
-    for i in range(0, num_layers):
+    for i in range(0, TERRAIN_NUM_LAYERS):
         terrain.append([])
 
     for filename in TERRAIN_FILES:
@@ -1318,21 +1320,21 @@ def create_cache():
         else:
             print("error during postprocessing. coastline {}/{}".format(i, len(coastlines)))
     coastlines = coastlines_processed
-    num_layers = 15
-    min_height = -9000
-    max_height = 0
-    format_options = [min_height, max_height, num_layers]
+    # num_layers = 15
+    # min_height = -9000
+    # max_height = 0
+    format_options = [BATHYMETRY_MIN_HEIGHT, BATHYMETRY_MAX_HEIGHT, BATHYMETRY_NUM_LAYERS]
     for filename in BATHYMETRY_FILES:
         write_bathymetry_to_cache(filename + "{}_{}_{}.geojson".format(*format_options), coastlines)
 
 
     # TODO: remove necessity to indicate num_layer, min_height and max_height
     # terrain
-    num_layers = 30
-    min_height = 0
-    max_height = 9000
+    # num_layers = 30
+    # min_height = 0
+    # max_height = 9000
 
-    format_options = [min_height, max_height, num_layers]
+    format_options = [TERRAIN_MIN_HEIGHT, TERRAIN_MAX_HEIGHT, TERRAIN_NUM_LAYERS]
     for filename in BATHYMETRY_FILES:
         write_bathymetry_to_cache(filename + "{}_{}_{}.geojson".format(*format_options))
 
@@ -1500,7 +1502,7 @@ for tile_index, tile_item in enumerate(tiles_flatten):
     # -------------------------------------------------------------------------------------------------------
     # create bathymetry hatching
     if DARK_MODE:
-        for i in range(0, 15):
+        for i in range(0, BATHYMETRY_NUM_LAYERS):
 
             if i < 5:
                 distance = 6
@@ -1509,7 +1511,7 @@ for tile_index, tile_item in enumerate(tiles_flatten):
 
             svg[tile_index].add_hatching("bathymetry_hatching_{}".format(i), stroke_width=0.5, stroke_opacity=0.5, distance=distance)
     else:
-        for i in range(0, 15):
+        for i in range(0, BATHYMETRY_NUM_LAYERS):
 
             if i < 5:
                 distance = 1
