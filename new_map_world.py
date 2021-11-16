@@ -1183,8 +1183,9 @@ def draw_borders(svg_handler):
     for border_line in borders_cut:
         lines = validate_linestring(border_line)
         for line in lines:
-            exclusion_zones.append(line.buffer(1).simplify(SIMPLIFICATION_MAX_ERROR))
-            svg_handler.add_poly_line(list(line.coords), **options)
+            if viewport_polygon.contains(line):
+                exclusion_zones.append(line.buffer(1).simplify(SIMPLIFICATION_MAX_ERROR))
+                svg_handler.add_poly_line(list(line.coords), **options)
 
     print(TIMER_STRING.format("loading border region data", (datetime.now()-timer_start).total_seconds())) 
 
@@ -1240,7 +1241,8 @@ def draw_cities(svg_handler):
         city_pos = cities[i]
         city_name = cities_names[i]
         city_label_orientation = cities_label_orientation[i]
-        svg_handler.add_polygon(city_pos.buffer(CITY_CIRCLE_RADIUS), **options)
+        if viewport_polygon.contains(city_pos.buffer(CITY_CIRCLE_RADIUS)):
+            svg_handler.add_polygon(city_pos.buffer(CITY_CIRCLE_RADIUS), **options)
 
         c = list(city_pos.coords)[0]
 
@@ -1252,40 +1254,40 @@ def draw_cities(svg_handler):
         text_width = maxx-minx
         text_height = maxy-miny
 
-        if city_label_orientation is "n":
+        if city_label_orientation is None:
+            city_label_orientation = "ne"
+        if city_label_orientation == "n":
             x_offset = c[0]-(text_width/2)
             y_offset = c[1]-2
-        elif city_label_orientation is "ne":
+        elif city_label_orientation == "ne":
             x_offset = c[0]+CITY_CIRCLE_RADIUS*2
             y_offset = c[1]-1
-        elif city_label_orientation is "e":
+        elif city_label_orientation == "e":
             x_offset = c[0]+CITY_CIRCLE_RADIUS*2.5
             y_offset = c[1]
-        elif city_label_orientation is "se":
+        elif city_label_orientation == "se":
             x_offset = c[0]+CITY_CIRCLE_RADIUS*2
             y_offset = c[1]+1+text_height
-        elif city_label_orientation is "s":
+        elif city_label_orientation == "s":
             x_offset = c[0]-(text_width/2)
             y_offset = c[1]+2+text_height
-        elif city_label_orientation is "sw":
+        elif city_label_orientation == "sw":
             x_offset = c[0]-(text_width)-(CITY_CIRCLE_RADIUS*2)
             y_offset = c[1]+1+text_height
-        elif city_label_orientation is "w":
+        elif city_label_orientation == "w":
             x_offset = c[0]-(text_width)-(CITY_CIRCLE_RADIUS*2.5)
             y_offset = c[1]+(text_height/2)
-        elif city_label_orientation is "nw":
+        elif city_label_orientation == "nw":
             x_offset = c[0]-(text_width)-(CITY_CIRCLE_RADIUS*2)
-            y_offset = c[1]-1
-        else: # standard is ne
-            x_offset = c[0]+CITY_CIRCLE_RADIUS*2
             y_offset = c[1]-1
 
         # text_lines = shapely.affinity.translate(text_lines, xoff=c[0]+CITY_CIRCLE_RADIUS*2, yoff=c[1]-1.0)
         text_lines = shapely.affinity.translate(text_lines, xoff=x_offset, yoff=y_offset)
 
         for line in text_lines.geoms:
-            l = list(line.coords)
-            svg_handler.add_line(l, **options_text)
+            if viewport_polygon.contains(line):
+                l = list(line.coords)
+                svg_handler.add_line(l, **options_text)
 
         exclusion_zones.append(text_lines.buffer(2+1).buffer(-1).simplify(SIMPLIFICATION_MAX_ERROR))
         exclusion_zones.append(city_pos.buffer(CITY_CIRCLE_RADIUS+1).simplify(SIMPLIFICATION_MAX_ERROR))
