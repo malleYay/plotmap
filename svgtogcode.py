@@ -6,7 +6,7 @@ import argparse
 
 import numpy as np
 
-SVG_FILENAME = "world-0.svg"
+SVG_FILENAME = "world-preview.svg"
 # SVG_FILENAME = "map_hauke.svg"
 # SVG_FILENAME = "dtm/elevation_lines.svg"
 # SVG_FILENAME = "dtm/weimar_50m.svg"
@@ -29,7 +29,8 @@ ROTATE_90       = False
 
 TRAVEL_SPEED    = 5000
 WRITE_SPEED     = 4000
-PEN_LIFT_SPEED  = 1000
+PEN_LIFT_SPEED  = 2000
+PEN_UP_DISTANCE = 2
 
 COMP_TOLERANCE  = 0.9   #0.001
 MIN_LINE_LENGTH = 0.75 # in mm
@@ -38,7 +39,6 @@ MIN_LINE_LENGTH = 0.75 # in mm
 # COMP_TOLERANCE  = 0.001
 # MIN_LINE_LENGTH = 0.1 
 
-PEN_UP_DISTANCE = 1
 CMD_MOVE        = "G1  X{0:.3f} Y{1:.3f}\n"
 CMD_PEN_UP      = "G1 Z{} F{}\n".format(PEN_UP_DISTANCE, PEN_LIFT_SPEED)
 
@@ -476,7 +476,8 @@ for s in range(0, len(segments)):
 
                 count_pen_up += 1
 
-        out.write(CMD_PEN_UP)
+
+        out.write("G1 Z{} F{}\n".format(PEN_UP_DISTANCE*3, PEN_LIFT_SPEED))
         out.write("G1 F{}\n".format(TRAVEL_SPEED))
         out.write("G1 X{} Y{}\n".format(0, 0))
 
