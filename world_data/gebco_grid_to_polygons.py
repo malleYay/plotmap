@@ -29,7 +29,7 @@ GeoJSON output is the same
 
 ---------------------------------------------------------------------- """
 
-BASE_DIR = "gebco_2021_sub_ice_topo_geotiff"
+BASE_DIR = "./world_data/gebco_2021_sub_ice_topo_geotiff"
 DATASET_FILES = [
     "gebco_2021_sub_ice_topo_n0.0_s-90.0_w-90.0_e0.0.tif",
     "gebco_2021_sub_ice_topo_n0.0_s-90.0_w-180.0_e-90.0.tif",
@@ -41,16 +41,16 @@ DATASET_FILES = [
     "gebco_2021_sub_ice_topo_n90.0_s0.0_w90.0_e180.0.tif"
 ]
 
-DATATYPE = "Bathymetry" # Bathymetry or Topography
+DATATYPE = "Topography" # Bathymetry or Topography
 
-if DATATYPE == "":
-    MIN_VAUE            = 0
+if DATATYPE == "Topography":
+    MIN_VALUE            = 0
     MAX_VALUE           = 9000
-    NUM_ELEVATION_LINES = 30
+    NUM_ELEVATION_LINES = 18 # 30
 elif DATATYPE == "Bathymetry":
-    MIN_VAUE            = -9000
+    MIN_VALUE            = -9000
     MAX_VALUE           = 0
-    NUM_ELEVATION_LINES = 15
+    NUM_ELEVATION_LINES = 3 # 15
 
 MIN_AREA                    = 4 # in square-pixel
 MAX_SIMPLIFICATION_ERROR    = 0.1 # in px
@@ -61,7 +61,7 @@ TIMER_STRING                = "{:<60s}: {:2.2f}s"
 # if ALLOW_OVERLAP is true, the polygon for 2000-3000 meters will contain 
 # the polygon for 3000-4000m too. (i.e. polygons overlap like pyramids)
 
-ALLOW_OVERLAP               = True
+ALLOW_OVERLAP               = False
 
 def generate_elevation_lines(image):
 
@@ -105,23 +105,38 @@ def get_holes_for_poly(contours, hierarchy, index):
 
 layer_min_max = []
 
-# equal elevation distances
-# elevation_line_height = abs((MAX_VALUE - MIN_VAUE) / NUM_ELEVATION_LINES)
-# for i in range(0, NUM_ELEVATION_LINES):
-#     threshold_value_low = MIN_VAUE + elevation_line_height*i
-#     threshold_value_high = threshold_value_low + elevation_line_height
-#     layer_min_max.append([threshold_value_low, threshold_value_high])
+# ----------------------------------------------------------------------------------------------------
+# equal elevation distances for bathymetry
+if DATATYPE == "Bathymetry":
+    # elevation_line_height = abs((MAX_VALUE - MIN_VALUE) / NUM_ELEVATION_LINES)
+    # for i in range(0, NUM_ELEVATION_LINES):
+    #     threshold_value_low = MIN_VALUE + elevation_line_height*i
+    #     threshold_value_high = threshold_value_low + elevation_line_height
+    #     layer_min_max.append([threshold_value_low, threshold_value_high])
 
-splits = [MIN_VAUE, 1000, 3000, MAX_VALUE]
-num_splits = len(splits)-1
+    splits = [MIN_VALUE, -3000, -1000, MAX_VALUE]
+    num_splits = len(splits)-1
 
-for i in range(0, num_splits):
-    elevation_line_height = abs((splits[i+1] - splits[i]) / (NUM_ELEVATION_LINES/num_splits))
-    for j in range(0, NUM_ELEVATION_LINES//num_splits):
-        threshold_value_low = splits[i] + elevation_line_height*j
-        threshold_value_high = threshold_value_low + elevation_line_height
-        layer_min_max.append([threshold_value_low, threshold_value_high])    
+    for i in range(0, num_splits):
+        elevation_line_height = abs((splits[i+1] - splits[i]) / (NUM_ELEVATION_LINES/num_splits))
+        for j in range(0, NUM_ELEVATION_LINES//num_splits):
+            threshold_value_low = splits[i] + elevation_line_height*j
+            threshold_value_high = threshold_value_low + elevation_line_height
+            layer_min_max.append([threshold_value_low, threshold_value_high])
+# ----------------------------------------------------------------------------------------------------
+# variable elevation distances for terrain
+elif DATATYPE == "Topography":
+    splits = [MIN_VALUE, 1000, 3000, MAX_VALUE]
+    num_splits = len(splits)-1
 
+    for i in range(0, num_splits):
+        elevation_line_height = abs((splits[i+1] - splits[i]) / (NUM_ELEVATION_LINES/num_splits))
+        for j in range(0, NUM_ELEVATION_LINES//num_splits):
+            threshold_value_low = splits[i] + elevation_line_height*j
+            threshold_value_high = threshold_value_low + elevation_line_height
+            layer_min_max.append([threshold_value_low, threshold_value_high])   
+
+# ---------------------------------------------------------------------------------------------------- 
 print("elevation contour lines:")
 for item in layer_min_max:
     print("{:6.0f} {:6.0f}".format(*item))
@@ -131,20 +146,21 @@ if not len(layer_min_max) == NUM_ELEVATION_LINES:
     exit(-1)
 
 
-for DATASET_FILE in DATASET_FILES:
+for DATASET_INDEX, DATASET_FILE in enumerate(DATASET_FILES):
 
-    GEOJSON_FILE = os.path.join(BASE_DIR, DATASET_FILE[:-4] + ".{}_{}_{}".format(MIN_VAUE, MAX_VALUE, NUM_ELEVATION_LINES) + ".geojson")
+    GEOJSON_FILE = os.path.join(BASE_DIR, DATASET_FILE[:-4] + ".{}_{}_{}".format(MIN_VALUE, MAX_VALUE, NUM_ELEVATION_LINES) + ".geojson")
 
     timer_start = datetime.now()
 
     with rasterio.open(os.path.join(BASE_DIR, DATASET_FILE)) as dataset:
 
         # print(dataset)
-        print("dataset count: {}".format(dataset.count))
+        print("starting file {} of {}".format(DATASET_INDEX+1, len(DATASET_FILES)))
+        # print("dataset count: {}".format(dataset.count))
         print("dataset w,h: {},{}".format(dataset.width, dataset.height))
         print("dataset bounds: {}".format(dataset.bounds))
         print("dataset CRS: {}".format(dataset.crs))
-        print("dataset transform: \n{}".format(dataset.transform))
+        # print("dataset transform: \n{}".format(dataset.transform))
 
         band = np.float32(dataset.read(1))
 
@@ -160,7 +176,7 @@ for DATASET_FILE in DATASET_FILES:
             threshold_value_low = float(layer_min_max[i][0])
             threshold_value_high = float(layer_min_max[i][1])
 
-            print("elevation line {}: {:7.2f} -> {:7.2f}".format(i, threshold_value_low, threshold_value_high))
+            print("elevation line {}: {:7.2f} -> {:7.2f}".format(i+1, threshold_value_low, threshold_value_high), end="\r")
             # print(band)
             # print(type(band))
             # print(threshold_value_low)
@@ -170,13 +186,18 @@ for DATASET_FILE in DATASET_FILES:
             # print(cv2.THRESH_BINARY)
             # print(type(cv2.THRESH_BINARY))
 
-            _, bin_band_lower = cv2.threshold(band, threshold_value_low, max_elevation, cv2.THRESH_BINARY)
+            if DATATYPE == "Topography":
+                _, bin_band_lower = cv2.threshold(band, threshold_value_low, max_elevation, cv2.THRESH_BINARY)
+            elif DATATYPE == "Bathymetry":
+                _, bin_band_lower = cv2.threshold(band, threshold_value_high, max_elevation, cv2.THRESH_BINARY_INV)
             
             bin_band = bin_band_lower
 
             if not ALLOW_OVERLAP:
-
-                _, bin_band_higher = cv2.threshold(band, threshold_value_high, max_elevation, cv2.THRESH_BINARY)
+                if DATATYPE == "Topography":
+                    _, bin_band_higher = cv2.threshold(band, threshold_value_high, max_elevation, cv2.THRESH_BINARY)
+                elif DATATYPE == "Bathymetry":
+                    _, bin_band_higher = cv2.threshold(band, threshold_value_low, max_elevation, cv2.THRESH_BINARY_INV)
 
                 bin_band_lower[bin_band_higher > 0] = 0
                 bin_band = bin_band_lower
@@ -279,7 +300,7 @@ for DATASET_FILE in DATASET_FILES:
             layers.append(polygons)
 
         for i in range(0, len(layers)):
-            print("layer {} [{} to {}]: polys: {}".format(i, MIN_VAUE + elevation_line_height*i, MIN_VAUE + elevation_line_height*(i+1), len(layers[i])))
+            print("layer {} [{} to {}]: polys: {}".format(i, MIN_VALUE + elevation_line_height*i, MIN_VALUE + elevation_line_height*(i+1), len(layers[i])))
 
         # remove overlaps
         # new_layers = []
@@ -323,8 +344,8 @@ for DATASET_FILE in DATASET_FILES:
                             "type": "Polygon"
                         },
                         "properties": OrderedDict([
-                            ("min_height", MIN_VAUE + elevation_line_height*i),
-                            ("max_height", MIN_VAUE + elevation_line_height*(i+1)),
+                            ("min_height", MIN_VALUE + elevation_line_height*i),
+                            ("max_height", MIN_VALUE + elevation_line_height*(i+1)),
                             ("layer", i)
                         ])
                     })

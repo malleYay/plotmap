@@ -22,7 +22,7 @@ CACHE_DIRECTORY                 = "./world_data/gebco_2021_sub_ice_topo_geotiff/
 SEA_LABELS_FILE                 = "./world_data/labels_sea.geojson"
 COASTLINE_FILE                  = "./world_data/simplified-land-polygons-complete-3857/simplified_land_polygons.shp"
 BORDER_FILE                     = "./world_data/10m_cultural/ne_10m_admin_0_boundary_lines_land.shp"
-CITIES_FILE                     = "./world_data/worldcities.geojson"
+CITIES_FILE                     = "./world_data/worldcities_old.geojson"
 BATHYMETRY_DIRECTORY            = "./world_data/gebco_2021_sub_ice_topo_geotiff"
 BATHYMETRY_FILES                = [
                                     "gebco_2021_sub_ice_topo_n0.0_s-90.0_w-90.0_e0.0.",
@@ -34,7 +34,7 @@ BATHYMETRY_FILES                = [
                                     "gebco_2021_sub_ice_topo_n90.0_s0.0_w0.0_e90.0.",
                                     "gebco_2021_sub_ice_topo_n90.0_s0.0_w90.0_e180.0."
                                 ]
-TERRAIN_DIRECTORY               = "world_data/gebco_2021_sub_ice_topo_geotiff"
+TERRAIN_DIRECTORY               = "./world_data/gebco_2021_sub_ice_topo_geotiff"
 TERRAIN_FILES                   = [
                                     "gebco_2021_sub_ice_topo_n0.0_s-90.0_w-90.0_e0.0.",
                                     "gebco_2021_sub_ice_topo_n0.0_s-90.0_w-180.0_e-90.0.",
@@ -48,7 +48,7 @@ TERRAIN_FILES                   = [
 # TODO: move sea labels to world_data/
 SEA_LABELS                      = [
                                     [[40.5,     -150],  "Nordpazifik"],
-                                    [[57,       168],   "Beringmeer"],
+                                    # [[57,       168],   "Beringmeer"],
                                     [[-40.6,    -148],  "Pazifik"],
                                     # [[24.201523, -93.767498], "Golf von Mexiko"],
                                     [[13,     -78],   "Karibisches Meer"],
@@ -62,7 +62,7 @@ SEA_LABELS                      = [
                                     [[68,       -15],   "Nordmeer"],
                                     # [[77.532554, -9.455168], "Groenlandsee"],
                                     [[72,       30],    "Barentssee"],
-                                    [[74,       63],    "Karasee"],
+                                    [[70,       63],    "Karasee"],
                                     [[34.2,     13.2],  "Mittelmeer"],
                                     # [[0.754504, -2.021039], "Golf von Guinea"],
                                     [[12,       58.2],  "Arabisches Meer"],
@@ -75,23 +75,23 @@ SEA_LABELS                      = [
                                     [[39.3,     130.5], "Jap. Meer"],
                                     [[56,       142],   "Ochotskisches"],
                                     [[53,       146],   "Meer"],
-                                    [[73,       160],   "Ostsibirische See"],
+                                    [[73,       145],   "Ostsibirische See"],
                                 ]
 
-MAP_CENTER                      = [0, 0]
+MAP_CENTER                      = [0, 0]                       # lat, lon
 MAP_SIZE                        = [1500, 1500]                  # unit for data: m / unit for SVG elements: px or mm
 VIEWPORT_OFFSET                 = [0, 250]                      # cutout of min and max
-TILE_NUMBERS                    = [3, 1]                        # number of tiles [x, y]
-VIEWPORT_SIZE                   = [MAP_SIZE[0]-2*VIEWPORT_OFFSET[0], MAP_SIZE[1]-2*VIEWPORT_OFFSET[1]]
+TILE_NUMBERS                    = [1, 1]                        # number of tiles [x, y]
+VIEWPORT_SIZE                   = [MAP_SIZE[0]-VIEWPORT_OFFSET[0]-VIEWPORT_OFFSET[0], MAP_SIZE[1]-VIEWPORT_OFFSET[1]-VIEWPORT_OFFSET[1]]
 TILE_SIZE                       = [VIEWPORT_SIZE[0]/TILE_NUMBERS[0], VIEWPORT_SIZE[1]/TILE_NUMBERS[1]]
 MAP_FRAGMENT_OFFSET             = VIEWPORT_OFFSET
 MAP_FRAGMENT_SIZE               = VIEWPORT_SIZE
 HOLE_DIST                       = 15                            # distance of mounting holes to the edges
 
 # instead of creating svg(s) of the whole map, create a small svg-preview
-PREVIEW                          = True
-PREVIEW_SIZE                     = [100, 100]                        # preview size in mm
-PREVIEW_POSITION                 = [750, 250]                        # position on map (considering MAP_SIZE and VIEWPORT_OFFSET) in mm
+PREVIEW                          = False
+PREVIEW_SIZE                     = [140, 140]                        # preview size in mm
+PREVIEW_POSITION                 = [690, 220]                        # position on map (considering MAP_SIZE and VIEWPORT_OFFSET) in mm
 
 THRESHOLD_CITY_POPULATION       = 1
 
@@ -134,7 +134,7 @@ DARK_MODE                       = False
 
 # bathymetry
 # TODO: remove necessity to indicate num_layer, min_height and max_height
-BATHYMETRY_NUM_LAYERS = 9 # 15
+BATHYMETRY_NUM_LAYERS = 3 # 15
 BATHYMETRY_MIN_HEIGHT = -9000
 BATHYMETRY_MAX_HEIGHT = 0
 # TODO: remove necessity to indicate num_layer, min_height and max_height
@@ -712,22 +712,6 @@ def write_bathymetry_to_cache(filename, difference=None):
 
     return
 
-# def read_cities_csv(filename):
-#     data = []
-#     with open('{}.csv'.format(filename), newline='\n') as csvfile:
-#         reader = csv.DictReader(csvfile)
-#         for row in reader:
-#             data.append([
-#                 row['city_ascii'],
-#                 row['lat'],
-#                 row['lng'],
-#                 row['country'],
-#                 row['capital'],
-#                 row['population']
-#                 ])
-
-#     return data
-
 def load_coastline():
 
     timer_start = datetime.now()
@@ -757,13 +741,6 @@ def load_coastline():
 
 def draw_meta(svg_handler):
 
-    # options = {
-    #     "stroke_width": 2.0,
-    #     "layer": "meta",
-    #     "stroke": [0, 0, 0],
-    #     "opacity": 0
-    # }
-
     options_screwholes = {
         "stroke_width": 2.0,
         "layer": "meta",
@@ -784,23 +761,6 @@ def draw_meta(svg_handler):
         "stroke": COLOR_SCREWHOLES,
         "opacity": 0
     }
-
-    # options_text = {
-    #     "stroke_width": 0.5,
-    #     "layer": "meta_text",
-    #     "stroke": [0, 0, 0],
-    # }
-
-    # if DARK_MODE:
-    #     options["stroke"] = [255, 255, 255]
-    #     options_text["stroke"] = [255, 255, 255]
-
-    # options_tile = {
-    #     "stroke_width": 4.0,
-    #     "layer": "meta",
-    #     "stroke": [0, 0, 0],
-    #     "opacity": 0
-    # }
 
     # -------------------------------------------------------------------------------------------------
     # draw screw holes
@@ -843,10 +803,6 @@ def draw_meta(svg_handler):
     if DRAW_LAT_LON_LINES:
         latlonlines = []
 
-        # color = [0, 0, 0]
-        # if DARK_MODE:
-        #     color = [255, 255, 255]
-
         NUM_LINES_LAT = 24*1
 
         for i in range(1, NUM_LINES_LAT): # lat 
@@ -877,8 +833,6 @@ def draw_meta(svg_handler):
                 svg_handler.add_line(l, **options_lat_lon_lines_text)
             
             exclusion_zones.append(text_lines2.buffer(3).simplify(SIMPLIFICATION_MAX_ERROR))
-
-            # exclusion_zones.append(Polygon())
 
             line = LineString([[0, MAP_SIZE[1]*i/NUM_LINES_LAT], [1+20, MAP_SIZE[1]*i/NUM_LINES_LAT]])
             exclusion_zones.append(line.buffer(2))
@@ -1058,8 +1012,12 @@ def draw_coastlines(svg_handler):
                     color = [255, 255, 255]
 
                 svg_handler.add_poly_line(list(line.coords), **options_coastlines)
+            
+        # add coastlines_hatching to exclusion_zones
+        for item in coastlines_line:
+            exclusion_zones.append(item.buffer(4.5, single_sided=True).simplify(SIMPLIFICATION_MAX_ERROR))
 
-    return coastlines
+    return coastlines_line
 
 def draw_bathymetry(svg_handler, cut_bathymetry_by):
 
@@ -1090,8 +1048,8 @@ def draw_bathymetry(svg_handler, cut_bathymetry_by):
     timer_start = datetime.now()
 
     add_layers_to_writer(bathymetry, svg_handler, exclusion_zones)
-    for item in [item for sublist in bathymetry for item in sublist]:
-        exclusion_zones.append(item.simplify(SIMPLIFICATION_MAX_ERROR))
+    # for item in [item for sublist in bathymetry for item in sublist]:
+    #     exclusion_zones.append(item.simplify(SIMPLIFICATION_MAX_ERROR))
 
     print(TIMER_STRING.format("preparing sea data", (datetime.now()-timer_start).total_seconds()))
 
@@ -1124,17 +1082,16 @@ def draw_terrain(svg_handler):
     timer_start = datetime.now()  
 
     # Tile border smoothing
-    # for i in range(0, len(terrain)):
+    for i in range(0, len(terrain)):
 
-    #     # Expand every polygon by a bit so polygon merging (to remove tile-borders) works
-    #     # at the same time this smoothes the rather rough lines a bit
+        # Expand every polygon by a bit so polygon merging (to remove tile-borders) works
+        # at the same time this smoothes the rather rough lines a bit
 
-    #     for j in range(0, len(terrain[i])):
-    #         terrain[i][j] = terrain[i][j].buffer(+1.0).buffer(-0.8)
+        for j in range(0, len(terrain[i])):
+            terrain[i][j] = terrain[i][j].buffer(+0.5).buffer(-0.4)
 
-    #     terrain[i] = polygons_merge_tiles(terrain[i])
+        terrain[i] = polygons_merge_tiles(terrain[i])
 
-    # polygons to linestrings
     terrain = polygons_to_linestrings(terrain, flatten=False)
 
     print(TIMER_STRING.format("converting terrain data", (datetime.now()-timer_start).total_seconds()))  
@@ -1211,10 +1168,8 @@ def draw_cities(svg_handler):
     cities_names             = []
     city_name                = []
     city_pos                 = []
-    city_label               = []
     cities_label_orientation = []
 
-    geometries = []
     shapefile = fiona.open(CITIES_FILE)
 
     latlons_flipped = True
@@ -1270,7 +1225,7 @@ def draw_cities(svg_handler):
             y_offset = c[1]+1+text_height
         elif city_label_orientation == "s":
             x_offset = c[0]-(text_width/2)
-            y_offset = c[1]+2+text_height
+            y_offset = c[1]+3+text_height
         elif city_label_orientation == "sw":
             x_offset = c[0]-(text_width)-(CITY_CIRCLE_RADIUS*2)
             y_offset = c[1]+1+text_height
@@ -1281,7 +1236,6 @@ def draw_cities(svg_handler):
             x_offset = c[0]-(text_width)-(CITY_CIRCLE_RADIUS*2)
             y_offset = c[1]-1
 
-        # text_lines = shapely.affinity.translate(text_lines, xoff=c[0]+CITY_CIRCLE_RADIUS*2, yoff=c[1]-1.0)
         text_lines = shapely.affinity.translate(text_lines, xoff=x_offset, yoff=y_offset)
 
         for line in text_lines.geoms:
@@ -1329,13 +1283,6 @@ def create_cache():
     for filename in BATHYMETRY_FILES:
         write_bathymetry_to_cache(filename + "{}_{}_{}.geojson".format(*format_options), coastlines)
 
-
-    # TODO: remove necessity to indicate num_layer, min_height and max_height
-    # terrain
-    # num_layers = 30
-    # min_height = 0
-    # max_height = 9000
-
     format_options = [TERRAIN_MIN_HEIGHT, TERRAIN_MAX_HEIGHT, TERRAIN_NUM_LAYERS]
     for filename in BATHYMETRY_FILES:
         write_bathymetry_to_cache(filename + "{}_{}_{}.geojson".format(*format_options))
@@ -1364,7 +1311,6 @@ for i, item_y in enumerate(y_range[:-1]):
         row.append(col)
     tiles.append(row)
 tiles_flatten = [item for sublist in tiles for item in sublist]
-print(tiles_flatten)
 
 # --------------------------------------------------------------------------------
 # fonts
@@ -1372,7 +1318,7 @@ hfont = HersheyFonts()
 hfont.load_default_font("futural")
 hfont.normalize_rendering(FONT_SIZE)
 hfont_large = HersheyFonts()
-hfont_large.load_default_font("futural")
+hfont_large.load_default_font("futuram")
 hfont_large.normalize_rendering(FONT_SIZE_LARGE)
 
 # --------------------------------------------------------------------------------
@@ -1422,12 +1368,15 @@ if PREVIEW:
     # create bathymetry hatching
     for i in range(0, BATHYMETRY_NUM_LAYERS):
 
-        if i < 5:
-            distance = 1
+        if i < 2:
+            distance = 1.2
+        elif i >= 2 and i < 8:
+            distance = 1.35**(i-1)
         else:
-            distance = 1.15**(i-4)
-
-        svg_preview.add_hatching("bathymetry_hatching_{}".format(i), stroke_width=0.5, stroke_opacity=0.5, distance=distance)
+            distance = 1.2
+        # print("bathymetry hatching - layer: {} - distance {}".format(i, distance))
+        distance_list = [3.2, 2.3, 1.4]
+        svg_preview.add_hatching("bathymetry_hatching_{}".format(i), stroke_width=0.5, stroke_opacity=0.5, distance=distance_list[i])
     
     # -------------------------------------------------------------------------------------------------------
     viewport_polygon = Polygon([
@@ -1503,24 +1452,20 @@ for tile_index, tile_item in enumerate(tiles_flatten):
 
     # -------------------------------------------------------------------------------------------------------
     # create bathymetry hatching
-    if DARK_MODE:
-        for i in range(0, BATHYMETRY_NUM_LAYERS):
+    for i in range(0, BATHYMETRY_NUM_LAYERS):
 
-            if i < 5:
-                distance = 6
-            else:
-                distance = 1.5 + 1.2**(14-4) - (1.2**(i-4) - 1.2**(5-4))
-
-            svg[tile_index].add_hatching("bathymetry_hatching_{}".format(i), stroke_width=0.5, stroke_opacity=0.5, distance=distance)
-    else:
-        for i in range(0, BATHYMETRY_NUM_LAYERS):
-
-            if i < 5:
-                distance = 1
-            else:
-                distance = 1.15**(i-4)
-
-            svg[tile_index].add_hatching("bathymetry_hatching_{}".format(i), stroke_width=0.5, stroke_opacity=0.5, distance=distance)
+        if i < 2:
+            distance = 1.2
+        elif i >= 2 and i < 8:
+            distance = 1.35**(i-1)
+        else:
+            distance = 1.2
+        # distance_list = [1.1, 1.15, 1.2, 1.25, 1.35, 1.45, 1.75, 2.0, 2.5]
+        # distance_list = [1.1, 1.25, 1.45, 1.8, 2.4, 3.05, 4, 5.1, 6.5]
+        # distance_list = [1.1, 2.25, 2.45, 2.8, 3.4, 4.05, 5, 6.1, 8.5]
+        # distance_list = list(reversed(distance_list))
+        distance_list = [3.2, 2.3, 1.4]
+        svg[tile_index].add_hatching("bathymetry_hatching_{}".format(i), stroke_width=0.5, stroke_opacity=0.5, distance=distance_list[i])
     # -------------------------------------------------------------------------------------------------------
 
     viewport_polygon = Polygon([

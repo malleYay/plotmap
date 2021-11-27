@@ -109,9 +109,9 @@ class SvgWriter(object):
 
             if hatching is not None:
                 kwargs = {}
-                kwargs["stroke_width"]  = stroke_width
-                kwargs["stroke"]        = stroke
-                kwargs["layer"]         = layer
+                kwargs["stroke_width"]      = stroke_width
+                kwargs["stroke"]            = stroke
+                kwargs["layer"]             = layer
                 self._add_hatching_for_polygon(p, hatching, kwargs)
 
     def add_poly_line(self, coords, stroke_width=1, stroke=[0, 0, 0], stroke_opacity=1.0, opacity=None, layer="default"):
@@ -174,19 +174,19 @@ class SvgWriter(object):
         self.hatching_options_meta[name]["orientation"] = orientation
         self.hatching_options_meta[name]["wiggle"] = wiggle
 
-        # new_hatchlines = self._add_hatching(orientation=orientation, distance=distance, wiggle=wiggle, bounding_box=bounding_box)
+        new_hatchlines = self._add_hatching(orientation=orientation, distance=distance, wiggle=wiggle, bounding_box=bounding_box)
 
-        # if not name in self.hatchings:
-        #     self.hatchings[name] = new_hatchlines
-        # else:
-        #     all_hatchlines = []
+        if not name in self.hatchings:
+            self.hatchings[name] = new_hatchlines
+        else:
+            all_hatchlines = []
 
-        #     for g in new_hatchlines.geoms:
-        #         all_hatchlines.append(g)
-        #     for g in self.hatchings[name]:
-        #         all_hatchlines.append(g)
+            for g in new_hatchlines.geoms:
+                all_hatchlines.append(g)
+            for g in self.hatchings[name]:
+                all_hatchlines.append(g)
 
-        #     self.hatchings[name] = MultiLineString(all_hatchlines)
+            self.hatchings[name] = MultiLineString(all_hatchlines)
 
     def _add_hatching(self, orientation=HATCHING_ORIENTATION_45, distance=2, wiggle=0, bounding_box=None):
 
